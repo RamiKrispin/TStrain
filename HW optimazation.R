@@ -55,8 +55,20 @@ holt_output <- lapply(w, function(i){
 }
 )
 
-p <- plotly::plot_ly()
+p_mape <- plotly::plot_ly()
 for(i in 1:length(holt_output)){
-  p <- p %>%plotly::add_lines(x = holt_output[[i]]$gamma, y = holt_output[[i]]$MAPE, name = i)
+  p_mape <- p_mape %>%plotly::add_lines(x = holt_output[[i]]$gamma, y = holt_output[[i]]$MAPE, name = i)
 }
-p
+p_mape <- p_mape %>% plotly::layout(title = "MAPE as function of gamma", 
+                          yaxis = list(title = "MAPE"),
+                          xaxis = list(title = "gamma"))
+
+
+p_rmse <- plotly::plot_ly()
+for(i in 1:length(holt_output)){
+  p_rmse <- p_rmse %>%plotly::add_lines(x = holt_output[[i]]$gamma, y = holt_output[[i]]$RMSE, name = i)
+}
+p_rmse <- p_rmse %>% plotly::layout(title = "RMSE as function of gamma", 
+                          yaxis = list(title = "RMSE"),
+                          xaxis = list(title = "gamma"))
+p_rmse

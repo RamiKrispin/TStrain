@@ -63,6 +63,8 @@ p_mape <- p_mape %>% plotly::layout(title = "MAPE as function of gamma",
                           yaxis = list(title = "MAPE"),
                           xaxis = list(title = "gamma"))
 
+p_mape
+
 
 p_rmse <- plotly::plot_ly()
 for(i in 1:length(holt_output)){
@@ -72,3 +74,7 @@ p_rmse <- p_rmse %>% plotly::layout(title = "RMSE as function of gamma",
                           yaxis = list(title = "RMSE"),
                           xaxis = list(title = "gamma"))
 p_rmse
+
+md2 <- HoltWinters(ts, alpha = alpha, beta = beta, gamma = 0.51)
+fc2 <- forecast::forecast(md2, h = h)
+TSstudio::plot_forecast(fc2)

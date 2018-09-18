@@ -62,14 +62,18 @@ library(h2o)
 h2o.init(max_mem_size = "15g")
 
 h2o.removeAll()
-train_h <- as.h2o(train)
+df_full <- as.h2o(train)
+splits <- h2o.splitFrame(df_full, 0.6, seed = 1234)
+
+train_h <- h2o.assign(splits[[1]], key = "train_hex")
+valid_h <- h2o.assign(splits[[2]], key = "valid_hex")
 test_h <- as.h2o(test)
 x <- c("index", "month", "lag12", "lag24")
 y <- "y"
 
 rf1 <- h2o.randomForest(
   training_frame = train_h,
-  nfolds = 5,
+  validation_frame = valid_h,
   x = x,
   y = y,
   ntrees = 500,
@@ -96,7 +100,7 @@ mape_rf
 
 gbm1 <- h2o.gbm(
   training_frame = train_h,
-  nfolds = 10,
+  validation_frame = valid_h,
   x = x,
   y = y,
   max_depth = 20,
@@ -126,7 +130,7 @@ h2o.rm("gbm_depth")
 hyper_parameters_depth = list(max_depth = seq(1,30,1) )
 gbm_grid_depth <- h2o.grid(algorithm = "gbm",
                            training_frame = train_h,
-                           nfolds = 5,
+                           validation_frame = valid_h,
                            hyper_params = hyper_parameters_depth,
                            y = y,
                            x = x,
@@ -195,7 +199,7 @@ search_criteria = list(
 )
 gbm_grid <- h2o.grid(algorithm = "gbm",
                      training_frame = train_h,
-                     nfolds = 5,
+                     validation_frame = valid_h,
                      y = y,
                      x = x,
                      hyper_params = hyper_parameters,
@@ -225,6 +229,35 @@ h2o.performance(gbm_final_model, valid = T)
 test_h$pred_gbm_final  <- h2o.predict(gbm_final_model, test_h)
 test_1 <- as.data.frame(test_h)
 
+
+autoML1 <- h2o.automl(training_frame = train_h,
+                      leaderboard_frame = valid_h,
+                      x = x,
+                      y = y,
+                      max_runtime_secs = 300)
+
+summary(autoML1@leaderboard)
+autoML1@leaderboard
+h2o.performance(autoML1@leader, valid = T)
+
+test_h$pred_autoML  <- h2o.predict(autoML1@leader, test_h)
+test_1 <- as.data.frame(test_h)
+
+mape_autoML <- mean(abs(test_1$y - test_1$pred_autoML) / test_1$y)
+mape_autoML
+
+
+test_1$MLavg <- (test_1$pred_rf + test_1$pred_gbm + test_1$pred_autoML) / 3
+plot(test_1$y, type = "l")
+lines(test_1$pred_rf, col = "red")
+lines(test_1$pred_gbm, col = "green")
+lines(test_1$pred_autoML, col = "orange")
+lines(test_1$MLavg, col = "blue")
+
+mape_MLavg <- mean(abs(test_1$y - test_1$MLavg) / test_1$y)
+mape_MLavg
+
+
 mape_gbm_final <- mean(abs(test_1$y - test_1$pred_gbm_final) / test_1$y)
 mape_gbm_final
 
@@ -238,9 +271,9 @@ gbm_cv <- do.call(h2o.gbm,
                   {
                     p <- gbm_final_model@parameters
                     p$model_id = NULL          ## do not overwrite the original grid model
-                    p$training_frame = df_full      ## use the full dataset
+                    p$training_frame = df_full     ## use the full dataset
                     p$validation_frame = NULL  ## no validation frame
-                    p$nfolds = 10               ## cross-validation
+                    p$nfolds = 5               ## cross-validation
                     p
                   }
 )

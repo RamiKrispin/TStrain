@@ -9,10 +9,11 @@ df <- data.frame(date = ymd(paste(floor(time(USgas)), cycle(USgas), "01", sep = 
                  y = as.numeric(USgas))
 
 ts_plot(df)
-
+ts_lags(USgas, lags = c(12, 24, 36))
 df$month <- factor(lubridate::month(df$date))
 df$lag12 <- dplyr::lag(df$y, n = 12)
 df$lag24 <- dplyr::lag(df$y, n = 24)
+df$lag36 <- dplyr::lag(df$y, n = 36)
 head(df)
 
 
@@ -28,7 +29,7 @@ test <- df[(nrow(df) - h +1):nrow(df), ]
 
 md1 <- lm(y ~ index, data = train)
 summary(md1)
-plot(df$index, df$y)
+plot(df$index, df$y, type = "l")
 abline(md1)
 
 test$y_lm1 <- predict(md1, newdata = test)
@@ -50,12 +51,25 @@ summary(md3)
 
 plot(train$index, train$y, type = "l")
 lines(train$index, predict(md3, newdata = train), type = "l", col = "red")
-
 test$y_lm3 <- predict(md3, newdata = test)
+
+md4 <- lm(y ~ index + month + lag12 + lag24 + lag36, data = train)
+summary(md4)
+
+plot(train$index, train$y, type = "l")
+lines(train$index, predict(md4, newdata = train), type = "l", col = "red")
+
+test$y_lm4 <- predict(md4, newdata = test)
 plot(test$index, test$y, type = "l")
-lines(test$index, test$y_lm3, type = "l", col = "red")
+lines(test$index, test$y_lm1, type = "l", col = "red")
+lines(test$index, test$y_lm2, type = "l", col = "green")
+lines(test$index, test$y_lm3, type = "l", col = "blue")
+lines(test$index, test$y_lm4, type = "l", col = "purple")
 
-
+mean(abs(test$y - test$y_lm1) / test$y)
+mean(abs(test$y - test$y_lm2) / test$y)
+mean(abs(test$y - test$y_lm3) / test$y)
+mean(abs(test$y - test$y_lm4) / test$y)
 
 library(h2o)
 
@@ -68,7 +82,7 @@ splits <- h2o.splitFrame(df_full, 0.6, seed = 1234)
 train_h <- h2o.assign(splits[[1]], key = "train_hex")
 valid_h <- h2o.assign(splits[[2]], key = "valid_hex")
 test_h <- as.h2o(test)
-x <- c("index", "month", "lag12", "lag24")
+x <- c("index", "month", "lag12", "lag24", "lag36")
 y <- "y"
 
 rf1 <- h2o.randomForest(
@@ -90,11 +104,11 @@ test_h$pred_rf <- h2o.predict(rf1, test_h)
 test_1 <- as.data.frame(test_h)
 plot(test_1$index, test_1$y, type = "l")
 lines(test_1$index, test_1$pred_rf, type = "l", col = "red")
-lines(test_1$index, test_1$y_lm3, type = "l", col = "green")
+lines(test_1$index, test_1$y_lm4, type = "l", col = "green")
 
 
-mape_lm3 <- mean(abs(test_1$y - test_1$y_lm3) / test_1$y)
-mape_lm3
+mape_lm4 <- mean(abs(test_1$y - test_1$y_lm4) / test_1$y)
+mape_lm4
 mape_rf <- mean(abs(test_1$y - test_1$pred_rf) / test_1$y)
 mape_rf
 
@@ -124,6 +138,7 @@ plot(test_1$index, test_1$y, type = "l")
 lines(test_1$index, test_1$pred_gbm, type = "l", col = "blue")
 lines(test_1$index, test_1$pred_rf, type = "l", col = "red")
 lines(test_1$index, test_1$y_lm3, type = "l", col = "green")
+lines(test_1$index, test_1$y_lm4, type = "l", col = "purple")
 
 h2o.rm("gbm_depth")
 
@@ -230,32 +245,6 @@ test_h$pred_gbm_final  <- h2o.predict(gbm_final_model, test_h)
 test_1 <- as.data.frame(test_h)
 
 
-autoML1 <- h2o.automl(training_frame = train_h,
-                      leaderboard_frame = valid_h,
-                      x = x,
-                      y = y,
-                      max_runtime_secs = 300)
-
-summary(autoML1@leaderboard)
-autoML1@leaderboard
-h2o.performance(autoML1@leader, valid = T)
-
-test_h$pred_autoML  <- h2o.predict(autoML1@leader, test_h)
-test_1 <- as.data.frame(test_h)
-
-mape_autoML <- mean(abs(test_1$y - test_1$pred_autoML) / test_1$y)
-mape_autoML
-
-
-test_1$MLavg <- (test_1$pred_rf + test_1$pred_gbm + test_1$pred_autoML) / 3
-plot(test_1$y, type = "l")
-lines(test_1$pred_rf, col = "red")
-lines(test_1$pred_gbm, col = "green")
-lines(test_1$pred_autoML, col = "orange")
-lines(test_1$MLavg, col = "blue")
-
-mape_MLavg <- mean(abs(test_1$y - test_1$MLavg) / test_1$y)
-mape_MLavg
 
 
 mape_gbm_final <- mean(abs(test_1$y - test_1$pred_gbm_final) / test_1$y)
@@ -338,9 +327,147 @@ lines(test_1$pred_gbm_cv2, col = "red")
 lines(test_1$pred_rf_cv, col = "blue")
 
 
+# XGboost
 
-autoML1 <- h2o.automl(training_frame = train,
-                      leaderboard_frame = valid,
+xgb <- h2o.xgboost(training_frame = train_h,
+                   validation_frame = valid_h,
+                   y = y,
+                   x = x,
+                   ntrees = 500,
+                   max_depth = 8,
+                   min_rows = 1,
+                   learn_rate = 0.1,
+                   sample_rate = 0.7,
+                   col_sample_rate = 0.9,
+                   seed = 1234)
+
+summary(xgb)
+h2o.varimp_plot(xgb)
+h2o.performance(xgb, valid = T)
+
+test_h$pred_xgb <- h2o.predict(xgb, test_h)
+test_1 <- as.data.frame(test_h)
+plot(test_1$index, test_1$y, type = "l")
+lines(test_1$index, test_1$pred_rf, type = "l", col = "red")
+lines(test_1$index, test_1$y_lm3, type = "l", col = "green")
+lines(test_1$index, test_1$pred_xgb, type = "l", col = "blue")
+
+
+mape_xgb <- mean(abs(test_1$y - test_1$pred_xgb) / test_1$y)
+mape_xgb
+mape_lm4
+
+
+
+
+# Ensemble learning
+my_xgb1 <- h2o.xgboost(training_frame = df_full,
+                   y = y,
+                   x = x,
+                   nfolds = 5,
+                   ntrees = 500,
+                   max_depth = 8,
+                   min_rows = 1,
+                   learn_rate = 0.1,
+                   sample_rate = 0.7,
+                   col_sample_rate = 0.9,
+                   fold_assignment = "Modulo",
+                   keep_cross_validation_predictions = TRUE,
+                   seed = 1234)
+
+my_xgb2 <- h2o.xgboost(x = x,
+                       y = y,
+                       training_frame = df_full,
+                       ntrees = 50,
+                       max_depth = 3,
+                       min_rows = 2,
+                       learn_rate = 0.2,
+                       nfolds = 5,
+                       fold_assignment = "Modulo",
+                       keep_cross_validation_predictions = TRUE,
+                       seed = 1234)
+
+my_rf1 <- h2o.randomForest(
+  training_frame = df_full,
+  x = x,
+  y = y,
+  ntrees = 500,
+  stopping_rounds = 5,
+  score_each_iteration = TRUE,
+  nfolds = 5,
+  fold_assignment = "Modulo",
+  keep_cross_validation_predictions = TRUE,
+  seed = 1234
+)
+
+
+my_gbm <- h2o.gbm(
+  training_frame = df_full,
+  x = x,
+  y = y,
+  max_depth = 20,
+  distribution = "gaussian",
+  ntrees = 500,
+  learn_rate = 0.1,
+  score_each_iteration = TRUE,
+  nfolds = 5,
+  fold_assignment = "Modulo",
+  keep_cross_validation_predictions = TRUE,
+  seed = 1234
+)
+
+my_dl <- h2o.deeplearning(x = x,
+                          y = y,
+                          training_frame = df_full,
+                          l1 = 0.001,
+                          l2 = 0.001,
+                          hidden = c(200, 200, 200),
+                          nfolds = 5,
+                          fold_assignment = "Modulo",
+                          keep_cross_validation_predictions = TRUE,
+                          seed = 1234)
+
+base_models <- list(my_xgb1@model_id, my_xgb2@model_id,  my_rf1@model_id,
+                    my_dl@model_id, my_gbm@model_id)
+
+ensemble <- h2o.stackedEnsemble(x = x,
+                                y = y,
+                                training_frame = df_full,
+                                base_models = base_models)
+
+perf <- h2o.performance(ensemble, newdata = test_h)
+h2o.rmse(h2o.performance(h2o.getModel(my_dl@model_id), newdata = test_h))
+
+get_rmse <- function(mm) h2o.rmse(h2o.performance(h2o.getModel(mm), newdata = test_h))
+baselearner_rmse <- sapply(base_models, get_rmse)
+baselearner_best_rmse_test <- min(baselearner_rmse)
+ensemble_rmse_test <- h2o.rmse(perf)
+
+# Auto ML
+autoML1 <- h2o.automl(training_frame = train_h,
+                      leaderboard_frame = valid_h,
                       x = x,
                       y = y,
-                      max_runtime_secs = 300)
+                      max_runtime_secs = 600,
+                      seed = 1234)
+
+summary(autoML1@leaderboard)
+autoML1@leaderboard
+h2o.performance(autoML1@leader, valid = T)
+
+test_h$pred_autoML  <- h2o.predict(autoML1@leader, test_h)
+test_1 <- as.data.frame(test_h)
+
+mape_autoML <- mean(abs(test_1$y - test_1$pred_autoML) / test_1$y)
+mape_autoML
+
+
+test_1$MLavg <- (test_1$pred_rf + test_1$pred_gbm + test_1$pred_autoML) / 3
+plot(test_1$y, type = "l")
+lines(test_1$pred_rf, col = "red")
+lines(test_1$pred_gbm, col = "green")
+lines(test_1$pred_autoML, col = "orange")
+lines(test_1$MLavg, col = "blue")
+
+mape_MLavg <- mean(abs(test_1$y - test_1$MLavg) / test_1$y)
+mape_MLavg

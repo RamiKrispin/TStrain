@@ -151,10 +151,15 @@ h2o.varimp_plot(rf_grid_model)
 h2o.performance(rf_grid_model, valid = T)
 h2o.performance(rf_grid_model, valid = T)
 h2o.performance(rf_grid_model, valid = T)
-test_h$pred_gbm_final  <- h2o.predict(rf_grid_model, test_h)
+test_h$rf_grid  <- h2o.predict(rf_grid_model, test_h)
 test_1 <- as.data.frame(test_h)
 
+mape_rf2 <- mean(abs(test_1$y - test_1$rf_grid) / test_1$y)
+mape_rf2
 
+plot(test_1$y, type = "l")
+lines(test_1$pred_rf, col = "blue")
+lines(test_1$rf_grid, col = "green")
 
 gbm1 <- h2o.gbm(
   training_frame = train_h,

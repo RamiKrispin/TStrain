@@ -77,7 +77,7 @@ h2o.init(max_mem_size = "15g")
 
 h2o.removeAll()
 df_full <- as.h2o(train)
-splits <- h2o.splitFrame(df_full, 0.6, seed = 1234)
+splits <- h2o.splitFrame(df_full, 0.8, seed = 1234)
 
 train_h <- h2o.assign(splits[[1]], key = "train_hex")
 valid_h <- h2o.assign(splits[[2]], key = "valid_hex")
@@ -111,6 +111,50 @@ mape_lm4 <- mean(abs(test_1$y - test_1$y_lm4) / test_1$y)
 mape_lm4
 mape_rf <- mean(abs(test_1$y - test_1$pred_rf) / test_1$y)
 mape_rf
+
+rf2 <- h2o.grid("randomForest",
+         search_criteria = list(
+           strategy = "RandomDiscrete",
+           stopping_metric = "mse",
+           stopping_tolerance = 0.001,
+           stopping_rounds = 10,
+           max_runtime_secs = 120
+         ),
+         hyper_params = list(
+           ntrees = c(50, 100, 150, 200, 250),
+           mtries = c(2, 3, 4, 5),
+           sample_rate = c(0.5, 0.632, 0.8, 0.95),
+           col_sample_rate_per_tree = c(0.5, 0.9, 1.0),
+           max_depth = c(30, 40, 60),
+           min_rows = c(1, 2)
+         ),
+         x = x, 
+         y = y, 
+         training_frame = df_full,
+         nfolds = 10, 
+         stopping_metric = "RMSE",
+         stopping_tolerance = 0,
+         stopping_rounds = 4,
+         score_tree_interval = 3,
+         grid_id = "rf_search"
+)
+
+rf2_summary <- h2o.getGrid(grid_id = "rf_search",
+                                 sort_by = "rmse",
+                                 decreasing = FALSE)
+
+rf2_summary
+rf_grid_model <- h2o.getModel(rf2_summary@model_ids[[1]])
+
+summary(rf_grid_model)
+h2o.varimp_plot(rf_grid_model)
+h2o.performance(rf_grid_model, valid = T)
+h2o.performance(rf_grid_model, valid = T)
+h2o.performance(rf_grid_model, valid = T)
+test_h$pred_gbm_final  <- h2o.predict(rf_grid_model, test_h)
+test_1 <- as.data.frame(test_h)
+
+
 
 gbm1 <- h2o.gbm(
   training_frame = train_h,
@@ -193,9 +237,9 @@ lines(test_1$index, test_1$pred_gbm_depth, col = "green")
 # h2o.rm("gbm_final")
 hyper_parameters <- list(
   max_depth = seq(minDepths,maxDepths,1),
-  sample_rate = seq(0.2,1,0.01),
-  col_sample_rate = seq(0.2,1,0.01),
-  col_sample_rate_per_tree = seq(0.2,1,0.01),
+  sample_rate = seq(0.2,1,0.005),
+  col_sample_rate = seq(0.2,1,0.05),
+  col_sample_rate_per_tree = seq(0.2,1,0.05),
   col_sample_rate_change_per_level = seq(0.9,1.1,0.01),
   min_rows = 2^seq(0,log2(nrow(train))-1,2),
   nbins = 2^seq(4,10,1),
@@ -285,6 +329,7 @@ lines(test_1$pred_gbm, col = "blue")
 lines(test_1$pred_gbm_depth, col = "green")
 lines(test_1$pred_gbm_final, col = "orange")
 lines(test_1$pred_gbm_cv, col = "purple")
+lines(test_1$y_lm4, col = "yellow")
 
 for(i in 1:5){
   gbm <- h2o.getModel(gbm_final_summary@model_ids[[i]])

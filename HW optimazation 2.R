@@ -2,9 +2,9 @@ library(TSstudio)
 data(USgas)
 data("USVSales")
 h <- 12
-periods <- 6
+periods <- 3
 window_size <- h
-window_space <- 1
+window_space <- h/2
 ts_partition <- ts_split(USgas, sample.out = 12)
 
 valid <- ts_partition$test
@@ -61,5 +61,71 @@ for(l in 1:base::nrow(mape_grid)){
 }
 
 
-mape_grid$avg <- (mape_grid$period_1 + mape_grid$period_2 + mape_grid$period_3 +
-                 mape_grid$period_4 + mape_grid$period_5 + mape_grid$period_6) / periods
+mape_grid$avg <- (mape_grid$period_1 + mape_grid$period_2 + mape_grid$period_3) / periods
+
+
+md2 <- stats::HoltWinters(ts.obj)
+fc2 <- forecast::forecast(md2, h)
+forecast::accuracy(fc2,valid)[10]
+
+mape_grid <- mape_grid %>% dplyr::arrange(avg)
+alpha_min <- min(mape_grid$alpha[1:10])
+alpha_max <- max(mape_grid$alpha[1:10])
+alpha <- seq(alpha_min, alpha_max, 0.01)
+
+beta_min <- min(mape_grid$beta[1:10])
+beta_max <- max(mape_grid$beta[1:10])
+beta <- seq(beta_min, beta_max, 0.01)
+
+gamma_min <- min(mape_grid$gamma[1:10])
+gamma_max <- max(mape_grid$gamma[1:10])
+gamma <- seq(gamma_min, gamma_max, 0.01)
+
+grid_df2 <- expand.grid(alpha, beta, gamma)
+names(grid_df2) <- c("alpha", "beta", "gamma")
+
+temp <- base::data.frame(base::matrix(NA, nrow = base::nrow(grid_df2), ncol = periods))
+names(temp) <- base::paste0("period_", 1:periods)
+
+mape_grid2 <- cbind(grid_df2, temp)
+mape_grid2$valid <- NA
+
+for(i in base::seq_along(w)){
+  ts_sub <- train <- test <- c <- NULL
+  ts_sub <- stats::window(ts.obj, start = stats::start(ts.obj), end = stats::time(ts.obj)[w[i]])
+  train <- ts_split(ts_sub, sample.out = h)$train
+  test <- ts_split(ts_sub, sample.out = h)$test
+  c <- which(names(mape_grid2) == base::paste("period_", i, sep = ""))
+  for(l in 1:base::nrow(mape_grid2)){
+    md <- fc <- NULL
+    md <- stats::HoltWinters(train, 
+                             alpha = mape_grid2$alpha[l],
+                             beta = mape_grid2$beta[l],
+                             gamma = mape_grid2$gamma[l])
+    fc <- forecast::forecast(md, h)
+    mape_grid2[l, c] <- forecast::accuracy(fc,test)[10]
+  }
+  
+  md1 <- stats::HoltWinters(train)
+  fc1 <- forecast::forecast(md1, h)
+  print(forecast::accuracy(fc1,test)[10])
+  
+}
+
+for(l in 1:base::nrow(mape_grid2)){
+  md <- fc <- NULL
+  md <- stats::HoltWinters(ts.obj, 
+                           alpha = mape_grid2$alpha[l],
+                           beta = mape_grid2$beta[l],
+                           gamma = mape_grid2$gamma[l])
+  fc <- forecast::forecast(md, h)
+  mape_grid2$valid[l] <- forecast::accuracy(fc,valid)[10]
+}
+
+
+mape_grid2$avg <- (mape_grid2$period_1 + mape_grid2$period_2 + mape_grid2$period_3) / periods
+
+
+md2 <- stats::HoltWinters(ts.obj)
+fc2 <- forecast::forecast(md2, h)
+forecast::accuracy(fc2,valid)[10]

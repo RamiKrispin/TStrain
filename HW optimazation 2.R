@@ -1,11 +1,11 @@
 library(TSstudio)
 data(USgas)
-data("USVSales")
+data(USVSales)
 h <- 12
 periods <- 3
 window_size <- h
-window_space <- h/2
-ts_partition <- ts_split(USgas, sample.out = 12)
+window_space <- h
+ts_partition <- ts_split(USgas, sample.out = h)
 
 valid <- ts_partition$test
 
@@ -15,7 +15,7 @@ e <- length(ts.obj)
 w <- seq(from = s, by = window_space, to = e)
 
 
-alpha <- beta <- gamma <- seq(0, 1, 0.1)
+alpha <- beta <- gamma <- seq(0, 1, 0.05)
 alpha[1] <- 0.00001
 beta[1] <- 0.00001
 gamma[1] <- 0.00001
@@ -61,7 +61,8 @@ for(l in 1:base::nrow(mape_grid)){
 }
 
 
-mape_grid$avg <- (mape_grid$period_1 + mape_grid$period_2 + mape_grid$period_3) / periods
+mape_grid$avg <- (mape_grid$period_1 + mape_grid$period_2 + mape_grid$period_3 ) / periods #+
+                    # mape_grid$period_4 + mape_grid$period_5 + mape_grid$period_6) / periods
 
 
 md2 <- stats::HoltWinters(ts.obj)
@@ -69,17 +70,17 @@ fc2 <- forecast::forecast(md2, h)
 forecast::accuracy(fc2,valid)[10]
 
 mape_grid <- mape_grid %>% dplyr::arrange(avg)
-alpha_min <- min(mape_grid$alpha[1:10])
-alpha_max <- max(mape_grid$alpha[1:10])
+alpha_min <- min(mape_grid$alpha[1:5])
+alpha_max <- max(mape_grid$alpha[1:5])
 alpha <- seq(alpha_min, alpha_max, 0.01)
 
-beta_min <- min(mape_grid$beta[1:10])
-beta_max <- max(mape_grid$beta[1:10])
+beta_min <- min(mape_grid$beta[1:5])
+beta_max <- max(mape_grid$beta[1:5])
 beta <- seq(beta_min, beta_max, 0.01)
 
-gamma_min <- min(mape_grid$gamma[1:10])
-gamma_max <- max(mape_grid$gamma[1:10])
-gamma <- seq(gamma_min, gamma_max, 0.01)
+gamma_min <- min(mape_grid$gamma[1:5])
+gamma_max <- max(mape_grid$gamma[1:5])
+gamma <- seq(gamma_min, gamma_max, 0.05)
 
 grid_df2 <- expand.grid(alpha, beta, gamma)
 names(grid_df2) <- c("alpha", "beta", "gamma")
@@ -123,7 +124,8 @@ for(l in 1:base::nrow(mape_grid2)){
 }
 
 
-mape_grid2$avg <- (mape_grid2$period_1 + mape_grid2$period_2 + mape_grid2$period_3) / periods
+mape_grid2$avg <- (mape_grid2$period_1 + mape_grid2$period_2 + mape_grid2$period_3 +
+                     mape_grid2$period_4 + mape_grid2$period_5 + mape_grid2$period_6) / periods
 
 
 md2 <- stats::HoltWinters(ts.obj)

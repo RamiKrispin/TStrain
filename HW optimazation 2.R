@@ -74,18 +74,19 @@ rmse_grid$avg <- (rmse_grid$period_1 + rmse_grid$period_2 + rmse_grid$period_3 +
 md2 <- stats::HoltWinters(ts.obj)
 fc2 <- forecast::forecast(md2, h)
 forecast::accuracy(fc2,valid)[10]
+forecast::accuracy(fc2,valid)[4]
 
 mape_grid <- mape_grid %>% dplyr::arrange(avg)
-alpha_min <- min(mape_grid$alpha[1:10])
-alpha_max <- max(mape_grid$alpha[1:10])
+alpha_min <- min(mape_grid$alpha[1:5])
+alpha_max <- max(mape_grid$alpha[1:5])
 alpha <- seq(alpha_min, alpha_max, 0.01)
 
-beta_min <- min(mape_grid$beta[1:10])
-beta_max <- max(mape_grid$beta[1:10])
+beta_min <- min(mape_grid$beta[1:5])
+beta_max <- max(mape_grid$beta[1:5])
 beta <- seq(beta_min, beta_max, 0.01)
 
-gamma_min <- min(mape_grid$gamma[1:10])
-gamma_max <- max(mape_grid$gamma[1:10])
+gamma_min <- min(mape_grid$gamma[1:5])
+gamma_max <- max(mape_grid$gamma[1:5])
 gamma <- seq(gamma_min, gamma_max, 0.01)
 
 grid_df2 <- expand.grid(alpha, beta, gamma)

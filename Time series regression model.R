@@ -168,3 +168,117 @@ lines(test_h2o$yhat_rf1, col = "red")
 lines(test_h2o$yhat_rf2, col = "green")
 
 mean(abs(test_h2o$y - test_h2o$yhat_rf2) / test_h2o$y)
+
+# GBM
+
+hyper_params = list( max_depth = seq(1,29,2) )
+
+gbm1 <- h2o.grid(
+  hyper_params = hyper_params,
+  search_criteria = list(strategy = "Cartesian"),
+  algorithm="gbm",
+  grid_id="depth_gbm",
+  x = x, 
+  y = y, 
+  training_frame = train_h, 
+  nfolds = 5,
+  ntrees = 10000,                                                            
+  learn_rate = 0.02,                                                         
+  learn_rate_annealing = 0.99,                                               
+  sample_rate = 0.8,              
+  col_sample_rate = 0.8, 
+  seed = 1234,                                                             
+
+  stopping_rounds = 5,
+  stopping_tolerance = 0.00005,
+  stopping_metric = "RMSE", 
+  score_tree_interval = 10                                                
+)
+
+sortedGrid <- h2o.getGrid("depth_gbm", sort_by="rmse", decreasing = FALSE)    
+sortedGrid
+
+## find the range of max_depth for the top 5 models
+topDepths = sortedGrid@summary_table$max_depth[1:5]                       
+minDepth = min(as.numeric(topDepths))
+maxDepth = max(as.numeric(topDepths))
+minDepth
+maxDepth
+gbm1a <- h2o.getModel(sortedGrid1@model_ids[[1]])
+test_h$yhat_gbm1 <-  as.numeric(h2o.predict(gbm1a, test_h))
+test_h2o <- as.data.frame(test_h)
+plot(test_h2o$y, type = "l")
+lines(test_h2o$yhat_rf1, col = "red")
+lines(test_h2o$yhat_gbm1, col = "green")
+mean(abs(test_h2o$y - test_h2o$yhat_gbm1) / test_h2o$y)
+
+
+hyper_params = list( 
+  ## restrict the search to the range of max_depth established above
+  max_depth = seq(minDepth,maxDepth,1),                                      
+  
+  ## search a large space of row sampling rates per tree
+  sample_rate = seq(0.2,1,0.05),                                             
+  
+  ## search a large space of column sampling rates per split
+  col_sample_rate = seq(0.2,1,0.05),                                         
+  
+  ## search a large space of column sampling rates per tree
+  col_sample_rate_per_tree = seq(0.2,1,0.05),                                
+  
+  ## search a large space of how column sampling per split should change as a function of the depth of the split
+  col_sample_rate_change_per_level = seq(0.9,1.1,0.01),                      
+  
+  ## search a large space of the number of min rows in a terminal node
+  min_rows = 2^seq(0,log2(nrow(train_h))-1,1),                                 
+  
+  ## search a large space of the number of bins for split-finding for continuous and integer columns
+  nbins = 2^seq(4,10,1),                                                     
+  
+  ## search a large space of the number of bins for split-finding for categorical columns
+  nbins_cats = 2^seq(4,12,1),                                                
+  
+  ## search a few minimum required relative error improvement thresholds for a split to happen
+  min_split_improvement = c(0,1e-8,1e-6,1e-4)
+)
+
+search_criteria = list(
+  strategy = "RandomDiscrete",      
+  max_runtime_secs = 3600,         
+    seed = 1234,                        
+  stopping_rounds = 5,                
+  stopping_metric = "RMSE",
+  stopping_tolerance = 1e-4
+)
+
+
+gbm2 <- h2o.grid(
+  hyper_params = hyper_params,
+  search_criteria = search_criteria,
+  algorithm = "gbm",
+  grid_id = "gbm_grid2", 
+  x = x, 
+  y = y, 
+  training_frame = train_h, 
+  nfolds = 5,
+  ntrees = 10000,                                                            
+  learn_rate = 0.02,                                                         
+  learn_rate_annealing = 0.99,                                            
+  score_tree_interval = 10,
+  seed = 1234                                                             
+)
+
+## Sort the grid models by AUC
+sortedGrid2 <- h2o.getGrid("gbm_grid2", sort_by = "rmse", decreasing = FALSE)    
+sortedGrid2
+
+gbm2a <- h2o.getModel(sortedGrid2@model_ids[[1]])
+test_h$yhat_gbm2 <-  as.numeric(h2o.predict(gbm2a, test_h))
+test_h2o <- as.data.frame(test_h)
+plot(test_h2o$y, type = "l")
+lines(test_h2o$yhat_rf1, col = "red")
+lines(test_h2o$yhat_gbm1, col = "green")
+lines(test_h2o$yhat_gbm2, col = "yellow")
+
+mean(abs(test_h2o$y - test_h2o$yhat_gbm1) / test_h2o$y)
+

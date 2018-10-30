@@ -2,10 +2,10 @@ library(TSstudio)
 library(plotly)
 library(forecast)
 data(USgas)
-
+data("USVSales")
 ts_plot(USgas)
 
-
+USgas <- USVSales
 
 ts_decompose(USgas)
 

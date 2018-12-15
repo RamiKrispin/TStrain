@@ -12,7 +12,15 @@ ts_sim <- function(model, h, n){
     sim_df$n <- paste0("test_", i)
     return(sim_df)
   }) 
-  s %>% dplyr::bind_rows() %>% tidyr::spread(key = n, value = y)
+  s %>% dplyr::bind_rows() %>% 
+    tidyr::spread(key = n, value = y) %>% 
+    dplyr::select(-x) %>% 
+    ts(start = stats::start(stats::simulate(model,nsim = 1)), 
+       frequency = stats::frequency(stats::simulate(model,nsim = 1))) %>% 
+    TSstudio::ts_plot(type = "single")
+  
+  
+  
   p <- plotly::plot_ly()
   
   for(i in 1:n){

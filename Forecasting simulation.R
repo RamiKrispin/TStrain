@@ -9,7 +9,8 @@ md5 <- forecast::holt(USgas)
 md6 <- stl(USgas, t.window=13, s.window="periodic", robust=TRUE)
 md7 <- forecast::Arima(USgas, order(c(1,0,0), seasonal = c(0,1,0)))
 
-ts_sim <- function(model, h, n, sim_color = "blue", opacity = 0.05){
+
+ts_sim <- function(model, h, n, sim_color = "blue", opacity = 0.05, seed = NULL){
   
   # Setting variables
   s <- s1 <- sim_output <- p <- output <- NULL
@@ -18,6 +19,17 @@ ts_sim <- function(model, h, n, sim_color = "blue", opacity = 0.05){
   if(!any(class(model) %in% c("ARIMA", "ets", "nnetar"))){
     stop("The model argument is not valid")
   }
+  
+  if(!is.numeric(n)){
+    stop("The value of the 'n' argument is not valid")
+  }
+  
+  if(!base::is.null(seed)){
+    if(!base::is.numeric(seed)){
+      stop("The value of the 'seed' argument is not valid")
+    }
+  }
+  
   if(!is.numeric(h)){
     stop("The value of the 'h' argument is not valid")
   } else if(h %% 1 != 0){
@@ -28,7 +40,7 @@ ts_sim <- function(model, h, n, sim_color = "blue", opacity = 0.05){
   
   s <- lapply(1:n, function(i){
     sim <- sim_df <- NULL
-    sim <- stats::simulate(model,nsim = h)
+    sim <- stats::simulate(model,nsim = h, seed = seed)
     sim_df <- base::data.frame(x = base::as.numeric(stats::time(sim)), 
                                y = base::as.numeric(sim))
     sim_df$n <- base::paste0("sim_", i)
@@ -69,7 +81,7 @@ ts_sim <- function(model, h, n, sim_color = "blue", opacity = 0.05){
   return(output)
 }
 
-p <-  ts_sim(model = md6, h = 60, n = 100, sim_color = "blue", opacity = 0.03)
+p <-  ts_sim(model = md1, h = 60, n = 100, sim_color = "blue", opacity = 0.03)
 
 p1 <- plot_forecast(fc)
 length(s)

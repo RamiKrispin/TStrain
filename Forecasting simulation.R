@@ -20,6 +20,10 @@ ts_sim <- function(model, h, n, sim_color = "blue", opacity = 0.05, seed = NULL)
     stop("The model argument is not valid")
   }
   
+  if(opacity < 0 || opacity > 1){
+    stop("The value of the 'opacity' argument is invalid")
+  }
+  
   if(!is.numeric(n)){
     stop("The value of the 'n' argument is not valid")
   }
@@ -81,7 +85,7 @@ ts_sim <- function(model, h, n, sim_color = "blue", opacity = 0.05, seed = NULL)
   return(output)
 }
 
-p <-  ts_sim(model = md1, h = 60, n = 100, sim_color = "blue", opacity = 0.03)
+p <-  ts_sim(model = md1, h = 60, n = 100, sim_color = "blue", opacity = 0.05)
 
 p1 <- plot_forecast(fc)
 length(s)

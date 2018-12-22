@@ -10,7 +10,7 @@ md6 <- stl(USgas, t.window=13, s.window="periodic", robust=TRUE)
 md7 <- forecast::Arima(USgas, order(c(1,0,0), seasonal = c(0,1,0)))
 
 
-ts_sim <- function(model, h, n, sim_color = "blue", opacity = 0.05, seed = NULL){
+forecast_sim <- function(model, h, n, sim_color = "blue", opacity = 0.05, seed = NULL){
   
   # Setting variables
   s <- s1 <- sim_output <- p <- output <- NULL
@@ -85,17 +85,6 @@ ts_sim <- function(model, h, n, sim_color = "blue", opacity = 0.05, seed = NULL)
   return(output)
 }
 
-p <-  ts_sim(model = md1, h = 60, n = 100, sim_color = "blue", opacity = 0.05)
 
-p1 <- plot_forecast(fc)
-length(s)
-plotly::subplot(p, p1, nrows = 2)
-s1 <- s %>% dplyr::bind_rows() %>% dplyr::group_by(x) %>%
-  dplyr::summarise(p50 = median(y))
-p %>% plotly::add_lines(x = s1$x, y = s1$p50, line = list(color = "black", dash = "dash", width = 3)) 
+p <-  forecast_sim(model = md1, h = 60, n = 100, sim_color = "blue", opacity = 0.05)
 
-x <- 1:5
-mod1 <- lm(c(1:3, 7, 6) ~ x)
-S1 <- simulate(mod1, nsim = 4)
-## repeat the simulation:
-.Random.seed <- attr(S1, "seed")

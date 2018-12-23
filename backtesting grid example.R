@@ -8,15 +8,17 @@ window_type <- "both" # Type of backtesting window
 
 
 # Creating a grid data frame
-s <- length(ts.obj) - window_space * (periods - 1)
-e <- length(ts.obj) 
-w <- seq(from = s, by = window_space, to = e)
+s <- length(ts.obj) - window_space * (periods - 1) # the length of the first partition
+e <- length(ts.obj)  # the end of the backtesting partition
+w <- seq(from = s, by = window_space, to = e) # Set the cutting points for the backtesting partions
 
 if(window_type == "both"){
   w_type <- c("sliding", "expanding")
 } else {
   w_type <- window_type
 }
+
+# Create a grid table
 model_list <- base::strsplit(models, "") %>% base::unlist()
 grid_df <- base::expand.grid(model_list, w, w_type)
 names(grid_df) <- c("model", "cut_point", "w_type")

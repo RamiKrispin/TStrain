@@ -439,8 +439,29 @@ xgb_grid <- h2o.grid(algorithm = "xgboost",
                      hyper_params = hyper_params,
                      search_criteria = search_criteria)
 
+grid <- h2o.getGrid(grid_id = xgb_grid@grid_id, sort_by = "RMSE", decreasing = FALSE)
+grid_top_model <- grid@summary_table[1, ]
 
 
+
+best_xgboost <- h2o.getModel(grid@model_ids[[1]])
+summary(best_xgboost)
+
+h2o.varimp_plot(best_xgboost)
+
+test_h$pred_xgb_grid <- h2o.predict(best_xgboost, test_h)
+test_1 <- as.data.frame(test_h)
+plot(test_1$index, test_1$y, type = "l")
+lines(test_1$index, test_1$pred_rf, type = "l", col = "red")
+lines(test_1$index, test_1$y_lm3, type = "l", col = "green")
+lines(test_1$index, test_1$pred_xgb, type = "l", col = "blue")
+lines(test_1$index, test_1$pred_xgb_grid, type = "l", col = "blue")
+
+
+mape_xgb_grid <- mean(abs(test_1$y - test_1$pred_xgb_grid) / test_1$y)
+mape_xgb_grid
+mape_xgb
+mape_lm4
 
 
 # Ensemble learning

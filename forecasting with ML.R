@@ -2,14 +2,16 @@ rm(list = ls())
 library(TSstudio)
 library(lubridate)
 library(dplyr)
+library(h2o)
 data(USgas)
-
+ts_info(USgas)
 
 df <- data.frame(date = ymd(paste(floor(time(USgas)), cycle(USgas), "01", sep = "-")),
                  y = as.numeric(USgas))
 
 ts_plot(df)
 ts_lags(USgas, lags = c(12, 24, 36))
+ts_acf(USgas, lag.max = 60)
 df$month <- factor(lubridate::month(df$date))
 df$lag12 <- dplyr::lag(df$y, n = 12)
 df$lag24 <- dplyr::lag(df$y, n = 24)
@@ -160,7 +162,7 @@ mape_rf2
 plot(test_1$y, type = "l")
 lines(test_1$pred_rf, col = "blue")
 lines(test_1$rf_grid, col = "green")
-
+lines(test_1$y_lm4,col = "orange")
 gbm1 <- h2o.gbm(
   training_frame = train_h,
   validation_frame = valid_h,
@@ -386,7 +388,7 @@ xgb <- h2o.xgboost(training_frame = train_h,
                    ntrees = 500,
                    max_depth = 8,
                    min_rows = 1,
-                   learn_rate = 0.1,
+                   learn_rate = 0.01,
                    sample_rate = 0.7,
                    col_sample_rate = 0.9,
                    seed = 1234)

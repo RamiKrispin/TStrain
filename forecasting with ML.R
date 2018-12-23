@@ -383,14 +383,19 @@ lines(test_1$pred_rf_cv, col = "blue")
 
 xgb <- h2o.xgboost(training_frame = train_h,
                    validation_frame = valid_h,
+                   nfolds = 5,
                    y = y,
                    x = x,
-                   ntrees = 500,
-                   max_depth = 8,
+                   ntrees = 10000,
+                   max_depth = 25,
                    min_rows = 1,
                    learn_rate = 0.01,
                    sample_rate = 0.7,
                    col_sample_rate = 0.9,
+                   stopping_rounds = 5,
+                   stopping_metric = "RMSE",
+                   stopping_tolerance = 1e-3,
+                   categorical_encoding = "OneHotInternal",
                    seed = 1234)
 
 summary(xgb)
@@ -412,20 +417,70 @@ mape_lm4
 
 
 
+hyper_params <- list(learn_rate = seq(0.0001, 0.2, 0.0001),
+                     max_depth = seq(1, 20, 1),
+                     sample_rate = seq(0.5, 1.0, 0.0001),
+                     col_sample_rate = seq(0.2, 1.0, 0.0001))
+search_criteria <- list(strategy = "RandomDiscrete",
+                        max_models = 50, 
+                        seed = 1234)
+
+# Train the grid
+xgb_grid <- h2o.grid(algorithm = "xgboost",
+                     x = x, y = y,
+                     training_frame = df_full,
+                     nfolds = 5,
+                     ntrees = 10000,
+                     stopping_rounds = 5,
+                     stopping_metric = "RMSE",
+                     stopping_tolerance = 1e-3,
+                     categorical_encoding = "OneHotInternal",
+                     seed = 1234,
+                     hyper_params = hyper_params,
+                     search_criteria = search_criteria)
+
+
+
+
+
 # Ensemble learning
 my_xgb1 <- h2o.xgboost(training_frame = df_full,
                    y = y,
                    x = x,
                    nfolds = 5,
-                   ntrees = 500,
-                   max_depth = 8,
+                   ntrees = 10000,
+                   max_depth = 25,
                    min_rows = 1,
-                   learn_rate = 0.1,
+                   learn_rate = 0.01,
                    sample_rate = 0.7,
                    col_sample_rate = 0.9,
-                   fold_assignment = "Modulo",
-                   keep_cross_validation_predictions = TRUE,
+                   stopping_rounds = 5,
+                   stopping_metric = "RMSE",
+                   stopping_tolerance = 1e-3,
+                   categorical_encoding = "OneHotInternal",
                    seed = 1234)
+
+
+summary(my_xgb1)
+h2o.varimp_plot(my_xgb1)
+h2o.performance(my_xgb1, valid = T)
+
+test_h$pred_xgb1 <- h2o.predict(my_xgb1, test_h)
+test_1 <- as.data.frame(test_h)
+plot(test_1$index, test_1$y, type = "l")
+lines(test_1$index, test_1$pred_rf, type = "l", col = "red")
+lines(test_1$index, test_1$y_lm3, type = "l", col = "green")
+lines(test_1$index, test_1$pred_xgb, type = "l", col = "blue")
+lines(test_1$index, test_1$pred_xgb1, type = "l", col = "yellow")
+
+
+mape_xgb1 <- mean(abs(test_1$y - test_1$pred_xgb1) / test_1$y)
+mape_xgb
+mape_xgb1
+mape_lm4
+
+
+
 
 my_xgb2 <- h2o.xgboost(x = x,
                        y = y,
@@ -457,9 +512,9 @@ my_gbm <- h2o.gbm(
   training_frame = df_full,
   x = x,
   y = y,
-  max_depth = 20,
+  max_depth = 25,
   distribution = "gaussian",
-  ntrees = 500,
+  ntrees = 600,
   learn_rate = 0.1,
   score_each_iteration = TRUE,
   nfolds = 5,

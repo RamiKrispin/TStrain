@@ -1,10 +1,10 @@
 ts.obj <- USgas
-periods <- 6
-window_space <- 6
-window_length <- 36
-window_test <- 12
-models <- "abehntwp"
-window_type <- "both"
+periods <- 6 # Number of testing periods
+window_space <- 6 # Space between each testing partition
+window_length <- 36 # Length of training window for sliding backtesting
+window_test <- 12 # Length of the testing partition
+models <- "abehntwp"  # Type of models
+window_type <- "both" # Type of backtesting window 
 
 
 # Creating a grid data frame

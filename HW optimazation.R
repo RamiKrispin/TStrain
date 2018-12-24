@@ -4,8 +4,10 @@
 # Using the USgas dataset as an example
 library(TSstudio)
 data(USgas)
-ts <- USgas
+USgas_split <- ts_split(USgas, sample.out = h)
 
+USgas_train <- USgas_split$train
+USgas_test <- USgas_split$test
 
 # Setting the window parameters
 periods <- 6
@@ -15,15 +17,6 @@ window_size <- 12
 window_space <- 1
 
 h <- 12
-
-# Identify init alpha and beta parameters
-md1 <- HoltWinters(ts)
-summary(md1)
-md1$coefficients
-
-
-alpha <- md1$alpha
-beta <- md1$beta
 
 # Setting a sequence for the gamma parameter
 alpha <- seq(0, 1, 0.05)
@@ -38,8 +31,8 @@ names(grid_df1) <- c("alpha", "beta", "gamma")
 head(grid_df1)
 tail(grid_df1)
 
-s <- length(ts) - window_space * (periods - 1)
-e <- length(ts) 
+s <- length(USgas_train) - window_space * (periods - 1)
+e <- length(USgas_train) 
 w <- seq(from = s, by = window_space, to = e)
 score_df <- as.data.frame(matrix(NA, ncol = length(w), nrow = nrow(grid_df1)))
 names(score_df) <- paste0("period_", 1:length(w), sep = "")
@@ -49,7 +42,9 @@ head(grid_df)
   
   for(n in 1:length(w)){
     ts_sub <- gamma_df <-  NULL
-    ts_sub <- stats::window(ts, start = stats::start(ts), end = stats::time(ts)[w[n]])
+    ts_sub <- stats::window(USgas_train, 
+                            start = stats::start(USgas_train), 
+                            end = stats::time(USgas_train)[w[n]])
     partition <- TSstudio::ts_split(ts_sub, sample.out = h)
     train <- partition$train
     test <- partition$test
@@ -61,8 +56,25 @@ head(grid_df)
       fc <- forecast::forecast(md, h = h)
       grid_df[i, n + 3]  <- forecast::accuracy(fc, test)[10]
       
+    }
+    print(n)
   }
-}
+
+grid_df$mean <- (grid_df$period_1 + grid_df$period_2  + grid_df$period_3  + 
+                grid_df$period_4 + grid_df$period_5 + grid_df$period_6) / 6
+
+
+r <- which.min(grid_df$mean)
+
+md <- HoltWinters(USgas_train, alpha = grid_df$alpha[r], 
+                  beta = grid_df$beta[r], 
+                  gamma = grid_df$gamma[r])
+fc <- forecast::forecast(md, h = h)
+forecast::accuracy(fc, USgas_test)
+
+md1 <- HoltWinters(USgas_train)
+fc1 <- forecast::forecast(md1, h = h)
+forecast::accuracy(fc1, USgas_test)
 
 holt_output <- lapply(w, function(i){
   ts_sub <- gamma_df <-  NULL

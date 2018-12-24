@@ -4,7 +4,8 @@
 # Using the USgas dataset as an example
 library(TSstudio)
 data(USgas)
-USgas_split <- ts_split(USgas, sample.out = h)
+data("USVSales")
+USgas_split <- ts_split(USVSales, sample.out = h)
 
 USgas_train <- USgas_split$train
 USgas_test <- USgas_split$test
@@ -89,8 +90,6 @@ names(score_df_second) <- paste0("period_", 1:length(w), sep = "")
 grid_df_second <- cbind(grid_df_second_a, score_df_second)
 head(grid_df_second)
 # Testing the sequance of gamma parameters over a window of 7 periods
-
-
 for(n in 1:length(w)){
   ts_sub <-  NULL
   ts_sub <- stats::window(USgas_train, 

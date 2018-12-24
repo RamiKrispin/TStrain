@@ -19,9 +19,9 @@ window_space <- 1
 h <- 12
 
 # Setting a sequence for the gamma parameter
-alpha <- seq(0, 1, 0.05)
-beta <- seq(0, 1, 0.05)
-gamma <- seq(0, 1, 0.05)
+alpha <- seq(0, 1, 0.1)
+beta <- seq(0, 1, 0.1)
+gamma <- seq(0, 1, 0.1)
 alpha[1] <- alpha[1] + 0.0001
 beta[1] <- beta[1] + 0.0001
 gamma[1] <- gamma[1] + 0.0001
@@ -40,7 +40,8 @@ grid_df <- cbind(grid_df1, score_df)
 head(grid_df)
 # Testing the sequance of gamma parameters over a window of 7 periods
   
-  for(n in 1:length(w)){
+  
+for(n in 1:length(w)){
     ts_sub <- gamma_df <-  NULL
     ts_sub <- stats::window(USgas_train, 
                             start = stats::start(USgas_train), 
@@ -64,7 +65,18 @@ grid_df$mean <- (grid_df$period_1 + grid_df$period_2  + grid_df$period_3  +
                 grid_df$period_4 + grid_df$period_5 + grid_df$period_6) / 6
 
 
-r <- which.min(grid_df$mean)
+grid_df <- grid_df %>% dplyr::arrange(mean)
+grid_top <- grid_df[1:3 , ]
+
+
+alpha <- seq(min(grid_top$alpha), max(grid_top$alpha), 0.01)
+beta <- seq(min(grid_top$beta), max(grid_top$beta), 0.01)
+gamma <- seq(min(grid_top$gamma), max(grid_top$gamma), 0.01)
+alpha[1] <- alpha[1] + 0.0001
+beta[1] <- beta[1] + 0.0001
+gamma[1] <- gamma[1] + 0.0001
+
+
 
 md <- HoltWinters(USgas_train, alpha = grid_df$alpha[r], 
                   beta = grid_df$beta[r], 

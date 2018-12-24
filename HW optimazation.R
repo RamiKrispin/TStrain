@@ -14,7 +14,7 @@ periods <- 6
 
 window_size <- 12
 
-window_space <- 1
+window_space <- 3
 
 h <- 12
 
@@ -26,18 +26,21 @@ alpha[1] <- alpha[1] + 0.0001
 beta[1] <- beta[1] + 0.0001
 gamma[1] <- gamma[1] + 0.0001
 
-grid_df1 <- base::expand.grid(alpha, beta, gamma)
-names(grid_df1) <- c("alpha", "beta", "gamma")
-head(grid_df1)
-tail(grid_df1)
+grid_df_init_a <- base::expand.grid(alpha, beta, gamma)
+names(grid_df_init_a) <- c("alpha", "beta", "gamma")
+head(grid_df_init_a)
+tail(grid_df_init_a)
 
 s <- length(USgas_train) - window_space * (periods - 1)
 e <- length(USgas_train) 
 w <- seq(from = s, by = window_space, to = e)
-score_df <- as.data.frame(matrix(NA, ncol = length(w), nrow = nrow(grid_df1)))
+score_df <- as.data.frame(matrix(NA, 
+                                 ncol = length(w), 
+                                 nrow = nrow(grid_df_init_a)))
+
 names(score_df) <- paste0("period_", 1:length(w), sep = "")
-grid_df <- cbind(grid_df1, score_df)
-head(grid_df)
+grid_df_init <- cbind(grid_df_init_a, score_df)
+head(grid_df_init)
 # Testing the sequance of gamma parameters over a window of 7 periods
   
   
@@ -51,66 +54,68 @@ for(n in 1:length(w)){
     test <- partition$test
     for(i in 1:nrow(grid_df)){
       md <- fc <- NULL
-      md <- HoltWinters(train, alpha = grid_df$alpha[i], 
-                        beta = grid_df$beta[i], 
-                        gamma = grid_df$gamma[i])
+      md <- HoltWinters(train, alpha = grid_df_init$alpha[i], 
+                        beta = grid_df_init$beta[i], 
+                        gamma = grid_df_init$gamma[i])
       fc <- forecast::forecast(md, h = h)
-      grid_df[i, n + 3]  <- forecast::accuracy(fc, test)[10]
+      grid_df_init[i, n + 3]  <- forecast::accuracy(fc, test)[10]
       
     }
     print(n)
   }
 
-grid_df$mean <- (grid_df$period_1 + grid_df$period_2  + grid_df$period_3  + 
-                grid_df$period_4 + grid_df$period_5 + grid_df$period_6) / 6
+grid_df_init$mean <- (grid_df_init$period_1 + grid_df_init$period_2  + grid_df_init$period_3  + 
+                        grid_df_init$period_4 + grid_df_init$period_5 + grid_df_init$period_6) / 6
 
 
-grid_df <- grid_df %>% dplyr::arrange(mean)
-grid_top <- grid_df[1:3 , ]
+grid_df_init <- grid_df_init %>% dplyr::arrange(mean)
+grid_init_top <- grid_df_init[1:5 , ]
 
 
-alpha1 <- seq(min(grid_top$alpha), max(grid_top$alpha), 0.05)
-beta1 <- seq(min(grid_top$beta), max(grid_top$beta), 0.05)
-gamma1 <- seq(min(grid_top$gamma), max(grid_top$gamma), 0.05)
+alpha1 <- seq(min(grid_init_top$alpha), max(grid_init_top$alpha), 0.01)
+beta1 <- seq(min(grid_init_top$beta), max(grid_init_top$beta), 0.01)
+gamma1 <- seq(min(grid_init_top$gamma), max(grid_init_top$gamma), 0.01)
 
 
-grid_df2 <- base::expand.grid(alpha1, beta1, gamma1)
-names(grid_df2) <- c("alpha", "beta", "gamma")
-head(grid_df2)
-tail(grid_df2)
+grid_df_second_a <- base::expand.grid(alpha1, beta1, gamma1)
+names(grid_df_second_a) <- c("alpha", "beta", "gamma")
+head(grid_df_second_a)
+tail(grid_df_second_a)
 
-score_df2 <- as.data.frame(matrix(NA, ncol = length(w), nrow = nrow(grid_df2)))
-names(score_df2) <- paste0("period_", 1:length(w), sep = "")
-grid_df3 <- cbind(grid_df2, score_df2)
-head(grid_df3)
+score_df_second <- as.data.frame(matrix(NA, 
+                                        ncol = length(w), 
+                                        nrow = nrow(grid_df_second_a)))
+names(score_df_second) <- paste0("period_", 1:length(w), sep = "")
+grid_df_second <- cbind(grid_df_second_a, score_df_second)
+head(grid_df_second)
 # Testing the sequance of gamma parameters over a window of 7 periods
 
 
 for(n in 1:length(w)){
-  ts_sub <- gamma_df <-  NULL
+  ts_sub <-  NULL
   ts_sub <- stats::window(USgas_train, 
                           start = stats::start(USgas_train), 
                           end = stats::time(USgas_train)[w[n]])
   partition <- TSstudio::ts_split(ts_sub, sample.out = h)
   train <- partition$train
   test <- partition$test
-  for(i in 1:nrow(grid_df3)){
+  for(i in 1:nrow(grid_df_second)){
     md <- fc <- NULL
-    md <- HoltWinters(train, alpha = grid_df3$alpha[i], 
-                      beta = grid_df3$beta[i], 
-                      gamma = grid_df3$gamma[i])
+    md <- HoltWinters(train, alpha = grid_df_second$alpha[i], 
+                      beta = grid_df_second$beta[i], 
+                      gamma = grid_df_second$gamma[i])
     fc <- forecast::forecast(md, h = h)
-    grid_df3[i, n + 3]  <- forecast::accuracy(fc, test)[10]
+    grid_df_second[i, n + 3]  <- forecast::accuracy(fc, test)[10]
     
   }
   print(n)
 }
 
-grid_df3$mean <- (grid_df3$period_1 + grid_df3$period_2  + grid_df3$period_3  + 
-                   grid_df3$period_4 + grid_df3$period_5 + grid_df3$period_6) / 6
+grid_df_second$mean <- (grid_df_second$period_1 + grid_df_second$period_2  + grid_df_second$period_3  + 
+                   grid_df_second$period_4 + grid_df_second$period_5 + grid_df_second$period_6) / 6
 
-grid_df3 <- grid_df3 %>% dplyr::arrange(mean)
-grid_top3 <- grid_df3[1:3 , ]
+grid_df_second <- grid_df_second %>% dplyr::arrange(mean)
+
 
 
 alpha2 <- seq(min(grid_top3$alpha), max(grid_top3$alpha), 0.01)
@@ -155,12 +160,12 @@ grid_df5$mean <- (grid_df5$period_1 + grid_df5$period_2  + grid_df5$period_3  +
 
 
 
-r <- which.min(grid_df5$mean)
+r <- which.min(grid_df_second$mean)
 
 
-md <- HoltWinters(USgas_train, alpha = grid_df5$alpha[r], 
-                  beta = grid_df5$beta[r], 
-                  gamma = grid_df5$gamma[r])
+md <- HoltWinters(USgas_train, alpha = grid_df_second$alpha[r], 
+                  beta = grid_df_second$beta[r], 
+                  gamma = grid_df_second$gamma[r])
 fc <- forecast::forecast(md, h = h)
 forecast::accuracy(fc, USgas_test)
 

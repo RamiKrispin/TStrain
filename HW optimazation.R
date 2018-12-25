@@ -249,9 +249,57 @@ ts_grid <- function(ts.obj,
   }
   
   if(model == "HoltWinters"){
-    if(!base::all(hyper_params %in% c("alpha", "beta", "gamma"))){
+    hw_par <- c("alpha", "beta", "gamma")
+    if(!base::all(hyper_params %in% hw_par)){
       stop("The 'hyper_params' argument is invalid")
     }
+    if("alpha" %in% base::names(hyper_params)){
+      if(base::any(which(hyper_params$alpha < 0)) || 
+         base::any(which(hyper_params$alpha > 1))){
+        stop("The value of the 'alpha' parameter is out of range,",
+             " cannot exceed 1 or be less or equal to 0")
+      } else if(any(which(hyper_params$alpha == 0))){
+        hyper_params$alpha[base::which(hyper_params$alpha == 0)] <- 1e-5
+        warning("The value of the 'alpha' parameter cannot be equal to 0",
+                " replacing 0 with 1e-5")
+      }
+      alpha <- NULL
+      alpha <- hyper_params$alpha
+      
+    } else {
+      alpha <- NULL
+    }
+    
+    if("beta" %in% base::names(hyper_params)){
+      if(base::any(which(hyper_params$beta < 0)) || 
+         base::any(which(hyper_params$beta > 1))){
+        stop("The value of the 'beta' parameter is out of range,",
+             " cannot exceed 1 or be less or equal to 0")
+      }
+      beta <- NULL
+      beta <- hyper_params$beta
+      
+    } else {
+      beta <- NULL
+    }
+    
+    if("gamma" %in% base::names(hyper_params)){
+      if(base::any(which(hyper_params$gamma < 0)) || 
+         base::any(which(hyper_params$gamma > 1))){
+        stop("The value of the 'gamma' parameter is out of range,",
+             " cannot exceed 1 or be less or equal to 0")
+      }
+      gamma <- NULL
+      gamma <- hyper_params$gamma
+      
+    } else {
+      gamma <- NULL
+    }
+    
+    grid_df <- base::eval(
+      base::parse(text = base::paste("base::expand.grid(", 
+                                     base::names(hyper_params),")", 
+                                     sep = "")))
   }
   
   
@@ -265,53 +313,11 @@ ts_grid <- function(ts.obj,
     w_start <- base::rep(1, base::length(w_end))
   }
   
-  if("alpha" %in% base::names(hyper_params)){
-    if(base::any(which(hyper_params$alpha < 0)) || 
-       base::any(which(hyper_params$alpha > 1))){
-      stop("The value of the 'alpha' parameter is out of range,",
-           " cannot exceed 1 or be less or equal to 0")
-    } else if(any(which(hyper_params$alpha == 0))){
-      hyper_params$alpha[base::which(hyper_params$alpha == 0)] <- 1e-5
-      warning("The value of the 'alpha' parameter cannot be equal to 0",
-              " replacing 0 with 1e-5")
-    }
-    alpha <- NULL
-    alpha <- hyper_params$alpha
-    
-  } else {
-    alpha <- NULL
-  }
-  
-  if("beta" %in% base::names(hyper_params)){
-    if(base::any(which(hyper_params$beta < 0)) || 
-       base::any(which(hyper_params$beta > 1))){
-      stop("The value of the 'beta' parameter is out of range,",
-           " cannot exceed 1 or be less or equal to 0")
-    }
-    beta <- NULL
-    beta <- hyper_params$beta
-    
-  } else {
-    beta <- NULL
-  }
-  
-  if("gamma" %in% base::names(hyper_params)){
-    if(base::any(which(hyper_params$gamma < 0)) || 
-       base::any(which(hyper_params$gamma > 1))){
-      stop("The value of the 'gamma' parameter is out of range,",
-           " cannot exceed 1 or be less or equal to 0")
-    }
-    gamma <- NULL
-    gamma <- hyper_params$gamma
-    
-  } else {
-    gamma <- NULL
-  }
-  
-base::eval(
-  base::parse(text = base::paste("base::expand.grid(", 
-                                 base::names(hyper_params),")", 
-                                 sep = "")))
   
 
+
 }
+
+base::names(grid_df) <- base::names(hyper_params)
+
+

@@ -258,6 +258,28 @@ ts_grid <- function(ts.obj,
   s <- length(ts.obj) - window_space * (periods - 1) # the length of the first partition
   e <- length(ts.obj)  # the end of the backtesting partition
   w_end <- seq(from = s, by = window_space, to = e) # Set the cutting points for the backtesting partions
-  
+
+  if(!base::is.null(window_length)){
   w_start <- w_end - window_test - window_length + 1
+  } else {
+    w_start <- base::rep(1, base::length(w_end))
+  }
+  
+  a <- seq(alpha[1], alpha[2], 0.1)
+  b <- seq(beta[1], beta[2], 0.1)
+  g <- seq(gamma[1], gamma[2], 0.1)
+  if(a[1] == 0){
+  a[1] <- a[1] + 0.0001
+  }
+  
+  if(b[1] == 0){
+    b[1] <- b[1] + 0.0001
+  }
+  
+  if(g[1] == 0 ){
+  g[1] <- g[1] + 0.0001
+  }
+  
+  grid_df_init_a <- base::expand.grid(alpha, beta, gamma)
+  names(grid_df_init_a) <- c("alpha", "beta", "gamma")
 }

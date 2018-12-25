@@ -265,21 +265,53 @@ ts_grid <- function(ts.obj,
     w_start <- base::rep(1, base::length(w_end))
   }
   
-  a <- seq(alpha[1], alpha[2], 0.1)
-  b <- seq(beta[1], beta[2], 0.1)
-  g <- seq(gamma[1], gamma[2], 0.1)
-  if(a[1] == 0){
-  a[1] <- a[1] + 0.0001
+  if("alpha" %in% base::names(hyper_params)){
+    if(base::any(which(hyper_params$alpha < 0)) || 
+       base::any(which(hyper_params$alpha > 1))){
+      stop("The value of the 'alpha' parameter is out of range,",
+           " cannot exceed 1 or be less or equal to 0")
+    } else if(any(which(hyper_params$alpha == 0))){
+      hyper_params$alpha[base::which(hyper_params$alpha == 0)] <- 1e-5
+      warning("The value of the 'alpha' parameter cannot be equal to 0",
+              " replacing 0 with 1e-5")
+    }
+    alpha <- NULL
+    alpha <- hyper_params$alpha
+    
+  } else {
+    alpha <- NULL
   }
   
-  if(b[1] == 0){
-    b[1] <- b[1] + 0.0001
+  if("beta" %in% base::names(hyper_params)){
+    if(base::any(which(hyper_params$beta < 0)) || 
+       base::any(which(hyper_params$beta > 1))){
+      stop("The value of the 'beta' parameter is out of range,",
+           " cannot exceed 1 or be less or equal to 0")
+    }
+    beta <- NULL
+    beta <- hyper_params$beta
+    
+  } else {
+    beta <- NULL
   }
   
-  if(g[1] == 0 ){
-  g[1] <- g[1] + 0.0001
+  if("gamma" %in% base::names(hyper_params)){
+    if(base::any(which(hyper_params$gamma < 0)) || 
+       base::any(which(hyper_params$gamma > 1))){
+      stop("The value of the 'gamma' parameter is out of range,",
+           " cannot exceed 1 or be less or equal to 0")
+    }
+    gamma <- NULL
+    gamma <- hyper_params$gamma
+    
+  } else {
+    gamma <- NULL
   }
   
-  grid_df_init_a <- base::expand.grid(alpha, beta, gamma)
-  names(grid_df_init_a) <- c("alpha", "beta", "gamma")
+base::eval(
+  base::parse(text = base::paste("base::expand.grid(", 
+                                 base::names(hyper_params),")", 
+                                 sep = "")))
+  
+
 }

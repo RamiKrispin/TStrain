@@ -5,7 +5,7 @@
 library(TSstudio)
 data(USgas)
 data("USVSales")
-USgas_split <- ts_split(USVSales, sample.out = h)
+USgas_split <- ts_split(AirPassengers, sample.out = h)
 
 USgas_train <- USgas_split$train
 USgas_test <- USgas_split$test
@@ -217,3 +217,47 @@ p_rmse
 md2 <- HoltWinters(ts, alpha = alpha, beta = beta, gamma = 0.51)
 fc2 <- forecast::forecast(md2, h = h)
 TSstudio::plot_forecast(fc2)
+
+periods <- 6 # Number of testing periods
+window_space <- 6 # Space between each testing partition
+window_length <- 36 # Length of training window for sliding backtesting
+window_test <- 12 # Length of the testing partition
+models <- "abehntwp"  # Type of models
+window_type <- "both" # Type of backtesting window 
+
+
+
+
+ts_grid <- function(ts.obj, 
+                    model, 
+                    periods,
+                    window_length = NULL, 
+                    window_space,
+                    window_test,
+                    hyper_params,
+                    search_criteria){
+ 
+  # Error handling
+  if(!stats::is.ts(ts.obj)){
+    stop("The input object is not 'ts' object")
+  } else if(stats::is.mts(ts.obj)){
+    stop("The input object is 'mts' object, please use 'ts'")
+  }
+  
+  if(!model %in% c("HoltWinters")){
+    stop("The 'model' argument is not valid")
+  }
+  
+  if(model == "HoltWinters"){
+    if(!base::all(hyper_params %in% c("alpha", "beta", "gamma"))){
+      stop("The 'hyper_params' argument is invalid")
+    }
+  }
+  
+  
+  s <- length(ts.obj) - window_space * (periods - 1) # the length of the first partition
+  e <- length(ts.obj)  # the end of the backtesting partition
+  w_end <- seq(from = s, by = window_space, to = e) # Set the cutting points for the backtesting partions
+  
+  w_start <- w_end - window_test - window_length + 1
+}

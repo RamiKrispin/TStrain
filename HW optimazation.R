@@ -275,6 +275,10 @@ ts_grid <- function(ts.obj,
          base::any(which(hyper_params$beta > 1))){
         stop("The value of the 'beta' parameter is out of range,",
              " cannot exceed 1 or be less or equal to 0")
+      } else if(any(which(hyper_params$beta == 0))){
+        hyper_params$beta[base::which(hyper_params$beta == 0)] <- 1e-5
+        warning("The value of the 'beta' parameter cannot be equal to 0",
+                " replacing 0 with 1e-5")
       }
       beta <- NULL
       beta <- hyper_params$beta
@@ -288,6 +292,10 @@ ts_grid <- function(ts.obj,
          base::any(which(hyper_params$gamma > 1))){
         stop("The value of the 'gamma' parameter is out of range,",
              " cannot exceed 1 or be less or equal to 0")
+      } else if(any(which(hyper_params$gamma == 0))){
+        hyper_params$alpha[base::which(hyper_params$gamma == 0)] <- 1e-5
+        warning("The value of the 'gamma' parameter cannot be equal to 0",
+                " replacing 0 with 1e-5")
       }
       gamma <- NULL
       gamma <- hyper_params$gamma
@@ -300,7 +308,14 @@ ts_grid <- function(ts.obj,
       base::parse(text = base::paste("base::expand.grid(", 
                                      base::names(hyper_params),")", 
                                      sep = "")))
+    
+   hw_model <- base::paste("stats::HoltWinters(x = ts.obj", sep = "")
+  for(i in hw_par){
+    if(i %in% base::names(grid_df)){
+      hw_model <- base::paste(", ", hw_model, i, " = grid_df$", i, "[i]" )
+    }
   }
+   }
   
   
   s <- length(ts.obj) - window_space * (periods - 1) # the length of the first partition

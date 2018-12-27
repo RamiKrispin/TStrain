@@ -248,6 +248,18 @@ ts_grid <- function(ts.obj,
     stop("The 'model' argument is not valid")
   }
   
+  # Set the backtesting partitions
+  s <- length(ts.obj) - window_space * (periods - 1) # the length of the first partition
+  e <- length(ts.obj)  # the end of the backtesting partition
+  w_end <- seq(from = s, by = window_space, to = e) # Set the cutting points for the backtesting partions
+  
+  if(!base::is.null(window_length)){
+    w_start <- w_end - window_test - window_length + 1
+  } else {
+    w_start <- base::rep(1, base::length(w_end))
+  }
+  
+  
   if(model == "HoltWinters"){
     hw_par <- c("alpha", "beta", "gamma")
     if(!base::all(hyper_params %in% hw_par)){
@@ -323,17 +335,20 @@ ts_grid <- function(ts.obj,
    }
   
   
-  s <- length(ts.obj) - window_space * (periods - 1) # the length of the first partition
-  e <- length(ts.obj)  # the end of the backtesting partition
-  w_end <- seq(from = s, by = window_space, to = e) # Set the cutting points for the backtesting partions
+  
+  
+grid <- NULL
 
-  if(!base::is.null(window_length)){
-  w_start <- w_end - window_test - window_length + 1
-  } else {
-    w_start <- base::rep(1, base::length(w_end))
-  }
+grid <- base::lapply(base::seq_along(w_end), function(n){
+  ts_sub <- train <- test <- NULL
   
-  
+  ts_sub <- stats::window(ts.obj, 
+                          start = stats::time(ts.obj)[w_start[n]], 
+                          end = stats::time(ts.obj)[w_end[n]])
+  partition <- TSstudio::ts_split(ts_sub, sample.out = window_test)
+  train <- partition$train
+  test <- partition$test
+})
 
 
 }

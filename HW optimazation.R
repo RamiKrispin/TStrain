@@ -318,9 +318,8 @@ ts_grid <- function(ts.obj,
     } else {
       hw_model <- base::paste(hw_model, ", ", i, " = NULL", sep = "")
     }
-    
-    hw_model <- base::paste(hw_model, ")", sep = "")
   }
+   hw_model <- base::paste(hw_model, ")", sep = "")
    }
   
   

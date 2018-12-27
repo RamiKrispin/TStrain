@@ -310,16 +310,16 @@ ts_grid <- function(ts.obj,
                                      sep = "")))
     base::names(grid_df) <- base::names(hyper_params)
     
-   hw_model <- base::paste("stats::HoltWinters(x = ts.obj", sep = "")
+   grid_model <- base::paste("stats::HoltWinters(x = ts.obj", sep = "")
   for(i in hw_par){
     if(i %in% base::names(grid_df)){
-      hw_model <- base::paste(hw_model, ", ", i, " = grid_df$", i, "[i]", 
+      grid_model <- base::paste(grid_model, ", ", i, " = grid_df$", i, "[i]", 
                               sep = "" )
     } else {
-      hw_model <- base::paste(hw_model, ", ", i, " = NULL", sep = "")
+      grid_model <- base::paste(grid_model, ", ", i, " = NULL", sep = "")
     }
   }
-   hw_model <- base::paste(hw_model, ")", sep = "")
+   grid_model <- base::paste(grid_model, ")", sep = "")
    }
   
   
@@ -338,6 +338,5 @@ ts_grid <- function(ts.obj,
 
 }
 
-base::names(grid_df) <- base::names(hyper_params)
 
 

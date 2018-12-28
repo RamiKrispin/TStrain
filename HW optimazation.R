@@ -292,7 +292,7 @@ ts_grid <- function(ts.obj,
   
   if(model == "HoltWinters"){
     hw_par <- c("alpha", "beta", "gamma")
-    if(!base::all(hyper_params %in% hw_par)){
+    if(!base::all(base::names(hyper_params) %in% hw_par)){
       stop("The 'hyper_params' argument is invalid")
     }
     if("alpha" %in% base::names(hyper_params)){
@@ -394,10 +394,39 @@ grid_output <- base::lapply(1:periods, function(n){
   
   return(search_df)
   }) %>% 
-  dplyr::bind_rows()
+  dplyr::bind_rows() %>%
+  tidyr::spread(key = period, value = mape)
 end <- Sys.time() - start_time
 end
 
+future::plan(future::multiprocess) 
+start_time <- Sys.time()
+grid_output <- future.apply::future_lapply(1:periods, function(n){
+  ts_sub <- train <- test <- search_df <- NULL
+  
+  search_df <- grid_df
+  search_df$period <- n
+  search_df$mape <- NA
+  ts_sub <- stats::window(ts.obj, 
+                          start = stats::time(ts.obj)[w_start[n]], 
+                          end = stats::time(ts.obj)[w_end[n]])
+  partition <- TSstudio::ts_split(ts_sub, sample.out = window_test)
+  train <- partition$train
+  test <- partition$test
+  
+  for(i in 1:nrow(search_df)){
+    md <- fc <- NULL
+    md <- base::eval(base::parse(text = grid_model))
+    fc <- forecast::forecast(md, h = window_test)
+    search_df$mape[i] <- forecast::accuracy(fc, test)[10]
+  }
+  
+  return(search_df)
+}) %>% 
+  dplyr::bind_rows() %>%
+  tidyr::spread(key = period, value = mape)
+end <- Sys.time() - start_time
+end
 }
 
 

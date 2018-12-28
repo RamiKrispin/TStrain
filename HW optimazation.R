@@ -53,7 +53,7 @@ for(n in 1:length(w)){
     partition <- TSstudio::ts_split(ts_sub, sample.out = h)
     train <- partition$train
     test <- partition$test
-    for(i in 1:nrow(grid_df)){
+    for(i in 1:nrow(grid_df_init)){
       md <- fc <- NULL
       md <- HoltWinters(train, alpha = grid_df_init$alpha[i], 
                         beta = grid_df_init$beta[i], 
@@ -442,9 +442,9 @@ plot(grid_output$mean, type = "l")
 grid_output1 <- grid_output[1:10, ] 
 
 
-hyper_params <- list(alpha = seq(min(grid_output1$alpha),max(grid_output1$alpha), 0.05), 
-                     beta = seq(min(grid_output1$beta), max(grid_output1$beta), 0.05), 
-                     gamma  = seq(min(grid_output1$gamma), max(grid_output1$gamma), 0.05))
+hyper_params <- list(alpha = seq(min(grid_output1$alpha),max(grid_output1$alpha), 0.01), 
+                     beta = seq(min(grid_output1$beta), max(grid_output1$beta), 0.01), 
+                     gamma  = seq(min(grid_output1$gamma), max(grid_output1$gamma), 0.01))
 
 
 md <- HoltWinters(USgas_train, alpha = grid_output$alpha[1], 
@@ -452,3 +452,7 @@ md <- HoltWinters(USgas_train, alpha = grid_output$alpha[1],
                   gamma = grid_output$gamma[1])
 fc <- forecast::forecast(md, h = h)
 forecast::accuracy(fc, USgas_test)
+
+md1 <- HoltWinters(USgas_train)
+fc1 <- forecast::forecast(md1, h = window_test)
+forecast::accuracy(fc1, USgas_test)

@@ -235,7 +235,9 @@ ts_grid <- function(ts.obj,
                     window_space,
                     window_test,
                     hyper_params,
-                    search_criteria){
+                    search_criteria, 
+                    parallel = TRUE,
+                    n.cores = "auto"){
  
   # Error handling
   if(!stats::is.ts(ts.obj)){
@@ -318,9 +320,11 @@ ts_grid <- function(ts.obj,
     
     grid_df <- base::eval(
       base::parse(text = base::paste("base::expand.grid(", 
-                                     base::names(hyper_params),")", 
+                                     base::paste(base::names(hyper_params), 
+                                                 collapse = ", "),
+                                     ", w_start, w_end)", 
                                      sep = "")))
-    base::names(grid_df) <- base::names(hyper_params)
+    base::names(grid_df) <- c(base::names(hyper_params), "start", "end")
     
    grid_model <- base::paste("stats::HoltWinters(x = ts.obj", sep = "")
   for(i in hw_par){
@@ -334,7 +338,7 @@ ts_grid <- function(ts.obj,
    grid_model <- base::paste(grid_model, ")", sep = "")
    }
   
-  
+
   
   
 grid <- NULL

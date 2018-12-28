@@ -1,0 +1,30 @@
+---
+title: "Forecasting Automation with Backtesting"
+author: "Rami Krispin (@Rami_Krispin)"
+date: "10/8/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Forecasting with backtesting method is based on the use 
+
+
+```{r}
+library(TSstudio)
+
+data(USgas)
+
+ts_info(USgas)
+
+ts_plot(USgas)
+
+ts_seasonal(USgas, type = "all")
+
+ts_lags(USgas)
+
+ts_lags(USgas, lags = c(12, 24, 48, 60))
+```
+

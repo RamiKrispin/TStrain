@@ -5,7 +5,7 @@
 library(TSstudio)
 data(USgas)
 data("USVSales")
-USgas_split <- ts_split(AirPassengers, sample.out = h)
+USgas_split <- ts_split(USgas, sample.out = h)
 
 USgas_train <- USgas_split$train
 USgas_test <- USgas_split$test
@@ -226,7 +226,9 @@ models <- "abehntwp"  # Type of models
 window_type <- "both" # Type of backtesting window 
 
 
-
+hyper_params <- list(alpha = seq(0,1, 0.1), 
+                     beta = seq(0,1, 0.1), 
+                     gamma  = seq(0,1, 0.1))
 
 ts_grid <- function(ts.obj, 
                     model, 
@@ -427,7 +429,26 @@ grid_output <- future.apply::future_lapply(1:periods, function(n){
   tidyr::spread(key = period, value = mape)
 end <- Sys.time() - start_time
 end
+
+col_mean <- base::which(!base::names(grid_output)  %in% base::names(hyper_params) )
+grid_output$mean <- base::rowMeans(grid_output[, col_mean])
+grid_output <- grid_output %>% dplyr::arrange(mean)
 }
 
+grid_output <- grid_output %>% dplyr::arrange(mean)
+plot(grid_output$mean, type = "l")
 
 
+grid_output1 <- grid_output[1:10, ] 
+
+
+hyper_params <- list(alpha = seq(min(grid_output1$alpha),max(grid_output1$alpha), 0.05), 
+                     beta = seq(min(grid_output1$beta), max(grid_output1$beta), 0.05), 
+                     gamma  = seq(min(grid_output1$gamma), max(grid_output1$gamma), 0.05))
+
+
+md <- HoltWinters(USgas_train, alpha = grid_output$alpha[1], 
+                  beta = grid_output$beta[1], 
+                  gamma = grid_output$gamma[1])
+fc <- forecast::forecast(md, h = h)
+forecast::accuracy(fc, USgas_test)

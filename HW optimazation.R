@@ -246,6 +246,34 @@ ts_grid <- function(ts.obj,
     stop("The input object is 'mts' object, please use 'ts'")
   }
   
+  if(!base::is.logical(parallel)){
+    warning("The 'parallel' argument is not a boolean operator, setting it to TRUE")
+    parallel <- TRUE
+  }
+  
+  if(n.cores != "auto"){
+    if(!base::is.numeric(n.cores)){
+      warning("The value of the 'n.cores' argument is not valid,", 
+              " setting it to 'auto' mode")
+      n.cores <- "auto"
+    } else if(base::is.numeric(n.cores) && 
+              (n.cores %% 1 != 0 || n.cores < 1)){
+      warning("The value of the 'n.cores' argument is not valid,", 
+              " setting it to 'auto' mode")
+      n.cores <- "auto"
+    } else{
+      if(future::availableCores() < n.cores){
+        warning("The value of the 'n.cores' argument is not valid,", 
+                "(the requested number of cores are greater than available)",
+                ", setting it to 'auto' mode")
+        n.cores <- "auto"
+      }
+    }
+  }
+  
+  if(n.cores == "auto"){
+    n.cores <- base::as.numeric( future::availableCores() - 1)
+  }
   if(!model %in% c("HoltWinters")){
     stop("The 'model' argument is not valid")
   }

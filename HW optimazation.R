@@ -350,14 +350,14 @@ ts_grid <- function(ts.obj,
       base::parse(text = base::paste("base::expand.grid(", 
                                      base::paste(base::names(hyper_params), 
                                                  collapse = ", "),
-                                     ", w_start, w_end)", 
+                                     ")", 
                                      sep = "")))
-    base::names(grid_df) <- c(base::names(hyper_params), "start", "end")
+    base::names(grid_df) <- c(base::names(hyper_params))
     
-   grid_model <- base::paste("stats::HoltWinters(x = ts.obj", sep = "")
+   grid_model <- base::paste("stats::HoltWinters(x = train", sep = "")
   for(i in hw_par){
     if(i %in% base::names(grid_df)){
-      grid_model <- base::paste(grid_model, ", ", i, " = grid_df$", i, "[i]", 
+      grid_model <- base::paste(grid_model, ", ", i, " = search_df$", i, "[i]", 
                               sep = "" )
     } else {
       grid_model <- base::paste(grid_model, ", ", i, " = NULL", sep = "")
@@ -369,19 +369,34 @@ ts_grid <- function(ts.obj,
 
   
   
-grid <- NULL
+grid_output <- NULL
 
-grid <- base::lapply(base::seq_along(w_end), function(n){
-  ts_sub <- train <- test <- NULL
+start_time <- Sys.time()
+grid_output <- base::lapply(1:periods, function(n){
+  ts_sub <- train <- test <- search_df <- NULL
   
+  search_df <- grid_df
+  search_df$period <- n
+  search_df$mape <- NA
   ts_sub <- stats::window(ts.obj, 
                           start = stats::time(ts.obj)[w_start[n]], 
                           end = stats::time(ts.obj)[w_end[n]])
   partition <- TSstudio::ts_split(ts_sub, sample.out = window_test)
   train <- partition$train
   test <- partition$test
-})
-
+  
+  for(i in 1:nrow(search_df)){
+    md <- fc <- NULL
+    md <- base::eval(base::parse(text = grid_model))
+    fc <- forecast::forecast(md, h = window_test)
+    search_df$mape[i] <- forecast::accuracy(fc, test)[10]
+  }
+  
+  return(search_df)
+  }) %>% 
+  dplyr::bind_rows()
+end <- Sys.time() - start_time
+end
 
 }
 

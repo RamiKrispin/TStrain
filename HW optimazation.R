@@ -372,8 +372,7 @@ ts_grid <- function(ts.obj,
   
   
 grid_output <- NULL
-
-start_time <- Sys.time()
+if(!parallel){
 grid_output <- base::lapply(1:periods, function(n){
   ts_sub <- train <- test <- search_df <- NULL
   
@@ -398,9 +397,7 @@ grid_output <- base::lapply(1:periods, function(n){
   }) %>% 
   dplyr::bind_rows() %>%
   tidyr::spread(key = period, value = mape)
-end <- Sys.time() - start_time
-end
-
+} else if(parallel){
 future::plan(future::multiprocess) 
 start_time <- Sys.time()
 grid_output <- future.apply::future_lapply(1:periods, function(n){
@@ -427,16 +424,19 @@ grid_output <- future.apply::future_lapply(1:periods, function(n){
 }) %>% 
   dplyr::bind_rows() %>%
   tidyr::spread(key = period, value = mape)
-end <- Sys.time() - start_time
-end
+}
 
 col_mean <- base::which(!base::names(grid_output)  %in% base::names(hyper_params) )
 grid_output$mean <- base::rowMeans(grid_output[, col_mean])
 grid_output <- grid_output %>% dplyr::arrange(mean)
-}
 
-grid_output <- grid_output %>% dplyr::arrange(mean)
-plot(grid_output$mean, type = "l")
+
+final_output <- list(grid_df = grid_output,
+                     alpha = grid_output$alpha[1],
+                     beta = grid_output$beta[1],
+                     gamma = grid_output$gamma[1])
+return(grid_output)
+}
 
 
 grid_output1 <- grid_output[1:10, ] 

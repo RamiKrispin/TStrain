@@ -435,7 +435,7 @@ col_mean <- base::which(!base::names(grid_output)  %in% base::names(hyper_params
 grid_output$mean <- base::rowMeans(grid_output[, col_mean])
 grid_output <- grid_output %>% dplyr::arrange(mean)
 
-
+final_output <- NULL
 final_output <- list(grid_df = grid_output)
 
 for(i in base::names(hyper_params)){

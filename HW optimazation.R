@@ -265,6 +265,8 @@ fc <- forecast::forecast(md, h = 60)
 TSstudio::plot_forecast(fc)
 
 class(USgas_grid)
+
+
 plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parcoords"){
   
   # Setting the pipe operator
@@ -333,6 +335,8 @@ plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parcoords")
     
   }
   }else if(type == "3D"){
+    if(grid.obj$parameters$model == "HoltWinters"){
+      if(base::length(base::names(grid.obj$parameters$hyper_params)) == 3){
     p <- plotly::plot_ly(data = grid.obj$grid_df[1:top,],
                          type="scatter3d",
                          mode = "markers",
@@ -343,12 +347,18 @@ plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parcoords")
                                        showscale = TRUE, 
                                        colorscale = "Viridis", 
                                        reversescale =T))
+      } else if(base::length(base::names(grid.obj$parameters$hyper_params)) == 2){
+      
+        } else if(base::length(base::names(grid.obj$parameters$hyper_params)) <= 1){
+            stop("Cannot create a 3D plot for a single hyper parameter")
+          }
+    }
   }
   
   return(p)
 }
 
-plot_grid(grid.obj = grid.obj, top = 100, highlight = 0.1, type = "3D")
+plot_grid(grid.obj = grid.obj, top = 100, highlight = 0.1) %>% plotly::layout(title = "Grid Search")
 
 plotly::plot_ly(data = grid.obj$grid_df[1:50,], x = ~ alpha, y = ~ beta, z = ~ gamma, 
                 marker = list(color = ~ mean, showscale = TRUE, colorscale = "Viridis", reversescale =T))

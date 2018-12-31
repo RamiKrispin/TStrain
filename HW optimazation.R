@@ -265,7 +265,7 @@ fc <- forecast::forecast(md, h = 60)
 TSstudio::plot_forecast(fc)
 
 class(USgas_grid)
-plot_grid <- function(grid.obj, top = NULL, range){
+plot_grid <- function(grid.obj, top = NULL, highlight = 0.1){
   
   # Error handle
   if(class(grid.obj) != "ts_grid"){
@@ -275,7 +275,17 @@ plot_grid <- function(grid.obj, top = NULL, range){
  hw_dim <- NULL
  hw_dim <- base::list()
  
- for(i in base::names(grid.obj$parameters$hyper_params)){}
+ for(i in base::seq_along(base::names(grid.obj$parameters$hyper_params))){
+  hw_dim[[i]] <-  base::eval(base::parse(text = base::paste("list(range = c(0,1),
+        constraintrange = c(min(grid.obj$grid_df[1:20, i]),
+                            max(grid.obj$grid_df[1:20,i])),
+          label = i, values = ~", 
+                        base::names(grid.obj$parameters$hyper_params)[i],
+                        ")",
+                        sep = "")
+  ))
+ }
+ 
   if(grid.obj$parameters$model == "HoltWinters"){
     grid.obj$grid_df[1:top,] %>%
       plotly::plot_ly(type = 'parcoords',
@@ -285,20 +295,7 @@ plot_grid <- function(grid.obj, top = NULL, range){
                                   reversescale = F,
                                   cmin = base::min(x$grid_df$mean),
                                   cmax = base::min(x$grid_df$mean) * 1.5),
-                      dimensions = list(
-                        list(range = c(0,1),
-                             constraintrange = c(min(x$grid_df$alpha[1:20]),
-                                                 max(x$grid_df$alpha[1:20])),
-                             label = 'Alpha', values = ~alpha),
-                        list(range = c(0,1),
-                             constraintrange = c(min(x$grid_df$beta[1:20]),
-                                                 max(x$grid_df$beta[1:20])),
-                             label = 'Beta', values = ~beta),
-                        list(range = c(0, 1),
-                             constraintrange =  c(min(x$grid_df$gamma[1:20]),
-                                                  max(x$grid_df$gamma[1:20])),
-                             label = 'Gamma', values = ~gamma)
-                      )
+                      dimensions = hw_dim
       )
     
   }

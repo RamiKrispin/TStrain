@@ -238,3 +238,29 @@ ts_grid <- function(ts.obj,
   base::class(final_output) <- "ts_grid" 
   return(final_output)
 }
+
+
+# Example
+
+data(USgas, package = "TSstudio")
+
+USgas_grid <- ts_grid(USgas,
+                      model = "HoltWinters",
+                      periods = 6,
+                      window_length = NULL,
+                      window_space = 6,
+                      window_test = 12,
+                      parallel = TRUE,
+                      n.cores = 8,
+                      hyper_params = list(alpha = seq(0, 1, 0.1),
+                                          beta = seq(0, 1, 0.1),
+                                          gamma = seq(0, 1, 0.1)))
+View(USgas_grid$grid_df)
+
+md <- HoltWinters(USgas, 
+                  alpha = USgas_grid$grid_df$alpha[1],
+                  beta = USgas_grid$grid_df$beta[1],
+                  gamma = USgas_grid$grid_df$gamma[1])
+fc <- forecast::forecast(md, h = 60)
+TSstudio::plot_forecast(fc)
+

@@ -264,3 +264,43 @@ md <- HoltWinters(USgas,
 fc <- forecast::forecast(md, h = 60)
 TSstudio::plot_forecast(fc)
 
+class(USgas_grid)
+plot_grid <- function(grid.obj, top = NULL, range){
+  
+  # Error handle
+  if(class(grid.obj) != "ts_grid"){
+    stop("The input object is not a 'ts_grid' class")
+  }
+  
+ hw_dim <- NULL
+ hw_dim <- base::list()
+ 
+ for(i in base::names(grid.obj$parameters$hyper_params)){}
+  if(grid.obj$parameters$model == "HoltWinters"){
+    grid.obj$grid_df[1:top,] %>%
+      plotly::plot_ly(type = 'parcoords',
+                      line = list(color = ~ mean,
+                                  colorscale = 'Jet',
+                                  showscale = TRUE,
+                                  reversescale = F,
+                                  cmin = base::min(x$grid_df$mean),
+                                  cmax = base::min(x$grid_df$mean) * 1.5),
+                      dimensions = list(
+                        list(range = c(0,1),
+                             constraintrange = c(min(x$grid_df$alpha[1:20]),
+                                                 max(x$grid_df$alpha[1:20])),
+                             label = 'Alpha', values = ~alpha),
+                        list(range = c(0,1),
+                             constraintrange = c(min(x$grid_df$beta[1:20]),
+                                                 max(x$grid_df$beta[1:20])),
+                             label = 'Beta', values = ~beta),
+                        list(range = c(0, 1),
+                             constraintrange =  c(min(x$grid_df$gamma[1:20]),
+                                                  max(x$grid_df$gamma[1:20])),
+                             label = 'Gamma', values = ~gamma)
+                      )
+      )
+    
+  }
+}
+

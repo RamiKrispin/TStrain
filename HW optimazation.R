@@ -265,13 +265,21 @@ fc <- forecast::forecast(md, h = 60)
 TSstudio::plot_forecast(fc)
 
 class(USgas_grid)
-plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parallel"){
+plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parcoords"){
+  
+  # Setting the pipe operator
+  `%>%` <- magrittr::`%>%`
   
   # Setting variables
-  
+  p <- NULL
   # Error handling
   if(class(grid.obj) != "ts_grid"){
     stop("The input object is not a 'ts_grid' class")
+  }
+  
+  if(type != "parcoords" && type != "3D"){
+    warning("The value of the 'type' argument is not valid, using default option (parcoords)")
+    type <- "parcoords"
   }
   
   if(!base::is.null(top)){
@@ -292,14 +300,15 @@ plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parallel"){
     highlight <- 0.1
   }
   
-  
- hw_dim <- NULL
- hw_dim <- base::list()
+  if(type == "parcoords"){
  
   if(grid.obj$parameters$model == "HoltWinters"){
     if(base::length(base::names(grid.obj$parameters$hyper_params)) < 2){
       stop("Cannot create a parallel coordinates plot for a single hyper parameter")
     }
+    hw_dim <- NULL
+    hw_dim <- base::list()
+    
          for(i in base::seq_along(base::names(grid.obj$parameters$hyper_params))){
           hw_dim[[i]] <-  base::eval(base::parse(text = base::paste("list(range = c(0,1),
                 constraintrange = c(min(grid.obj$grid_df[1:", base::ceiling(top * highlight), ", i]),
@@ -311,7 +320,7 @@ plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parallel"){
           ))
          }
  
-    grid.obj$grid_df[1:top,] %>%
+    p <- grid.obj$grid_df[1:top,] %>%
       plotly::plot_ly(type = 'parcoords',
                       line = list(color = ~ mean,
                                   colorscale = 'Jet',
@@ -323,8 +332,25 @@ plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parallel"){
       )
     
   }
+  }else if(type == "3D"){
+    p <- plotly::plot_ly(data = grid.obj$grid_df[1:top,],
+                         type="scatter3d",
+                         mode = "markers",
+                         x = ~ alpha, 
+                         y = ~ beta, 
+                         z = ~ gamma, 
+                         marker = list(color = ~ mean, 
+                                       showscale = TRUE, 
+                                       colorscale = "Viridis", 
+                                       reversescale =T))
+  }
+  
+  return(p)
 }
 
-plot_grid(grid.obj = grid.obj, top = 50, highlight = 0.5)
+plot_grid(grid.obj = grid.obj, top = 100, highlight = 0.1, type = "3D")
 
+plotly::plot_ly(data = grid.obj$grid_df[1:50,], x = ~ alpha, y = ~ beta, z = ~ gamma, 
+                marker = list(color = ~ mean, showscale = TRUE, colorscale = "Viridis", reversescale =T))
 
+plotly::subplot(p1,p2)

@@ -265,10 +265,12 @@ fc <- forecast::forecast(md, h = 60)
 TSstudio::plot_forecast(fc)
 
 class(USgas_grid)
-plot_grid <- function(grid.obj, top = NULL, highlight = 0.1){
+plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parallel"){
   
+  # Setting variables
   high_light <- NULL
-  # Error handle
+  
+  # Error handling
   if(class(grid.obj) != "ts_grid"){
     stop("The input object is not a 'ts_grid' class")
   }
@@ -303,8 +305,8 @@ plot_grid <- function(grid.obj, top = NULL, highlight = 0.1){
     }
          for(i in base::seq_along(base::names(grid.obj$parameters$hyper_params))){
           hw_dim[[i]] <-  base::eval(base::parse(text = base::paste("list(range = c(0,1),
-                constraintrange = c(min(grid.obj$grid_df[1:20, i]),
-                                    max(grid.obj$grid_df[1:20,i])),
+                constraintrange = c(min(grid.obj$grid_df[", high_light, ", i]),
+                                    max(grid.obj$grid_df[", high_light, ",i])),
                   label = i, values = ~", 
                                 base::names(grid.obj$parameters$hyper_params)[i],
                                 ")",

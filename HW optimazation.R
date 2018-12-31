@@ -267,26 +267,51 @@ TSstudio::plot_forecast(fc)
 class(USgas_grid)
 plot_grid <- function(grid.obj, top = NULL, highlight = 0.1){
   
+  high_light <- NULL
   # Error handle
   if(class(grid.obj) != "ts_grid"){
     stop("The input object is not a 'ts_grid' class")
   }
   
+  if(base::is.null(top)){
+    if(!base::is.numeric(top) || top %% 1 != 0){
+      warning("The value of the 'top' argument is not valid, using default option (top 100 models)")
+      top <- ifelse(base::nrow(grid.obj$grid_df) > 100, 100, base::nrow(grid.obj$grid_df))
+    }
+    if(top > base::nrow(grid.obj$grid_df)){
+      warning("The value of the 'top' argument exceeding the number of models, using default option (top 100 models)")
+      top <- ifelse(base::nrow(grid.obj$grid_df) > 100, 100, base::nrow(grid.obj$grid_df))
+    }
+  } else { 
+    top <- ifelse(base::nrow(grid.obj$grid_df) > 100, 100, base::nrow(grid.obj$grid_df))
+    }
+  
+  if(!base::is.numeric(highlight) || highlight <= 0 || highlight > 1){
+    warning("The value of the 'highlight' argument is not valid, using default (0.1)")
+    highlight <- 0.1
+  }
+  
+  
+  high_light <- 1:base::ceiling(top * highlight)
+  
  hw_dim <- NULL
  hw_dim <- base::list()
  
- for(i in base::seq_along(base::names(grid.obj$parameters$hyper_params))){
-  hw_dim[[i]] <-  base::eval(base::parse(text = base::paste("list(range = c(0,1),
-        constraintrange = c(min(grid.obj$grid_df[1:20, i]),
-                            max(grid.obj$grid_df[1:20,i])),
-          label = i, values = ~", 
-                        base::names(grid.obj$parameters$hyper_params)[i],
-                        ")",
-                        sep = "")
-  ))
- }
- 
   if(grid.obj$parameters$model == "HoltWinters"){
+    if(base::length(base::names(grid.obj$parameters$hyper_params)) < 2){
+      stop("Cannot create a parallel coordinates plot for a single hyper parameter")
+    }
+         for(i in base::seq_along(base::names(grid.obj$parameters$hyper_params))){
+          hw_dim[[i]] <-  base::eval(base::parse(text = base::paste("list(range = c(0,1),
+                constraintrange = c(min(grid.obj$grid_df[1:20, i]),
+                                    max(grid.obj$grid_df[1:20,i])),
+                  label = i, values = ~", 
+                                base::names(grid.obj$parameters$hyper_params)[i],
+                                ")",
+                                sep = "")
+          ))
+         }
+ 
     grid.obj$grid_df[1:top,] %>%
       plotly::plot_ly(type = 'parcoords',
                       line = list(color = ~ mean,

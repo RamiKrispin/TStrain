@@ -268,14 +268,13 @@ class(USgas_grid)
 plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parallel"){
   
   # Setting variables
-  high_light <- NULL
   
   # Error handling
   if(class(grid.obj) != "ts_grid"){
     stop("The input object is not a 'ts_grid' class")
   }
   
-  if(base::is.null(top)){
+  if(!base::is.null(top)){
     if(!base::is.numeric(top) || top %% 1 != 0){
       warning("The value of the 'top' argument is not valid, using default option (top 100 models)")
       top <- ifelse(base::nrow(grid.obj$grid_df) > 100, 100, base::nrow(grid.obj$grid_df))
@@ -294,8 +293,6 @@ plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parallel"){
   }
   
   
-  high_light <- 1:base::ceiling(top * highlight)
-  
  hw_dim <- NULL
  hw_dim <- base::list()
  
@@ -305,9 +302,9 @@ plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parallel"){
     }
          for(i in base::seq_along(base::names(grid.obj$parameters$hyper_params))){
           hw_dim[[i]] <-  base::eval(base::parse(text = base::paste("list(range = c(0,1),
-                constraintrange = c(min(grid.obj$grid_df[", high_light, ", i]),
-                                    max(grid.obj$grid_df[", high_light, ",i])),
-                  label = i, values = ~", 
+                constraintrange = c(min(grid.obj$grid_df[1:", base::ceiling(top * highlight), ", i]),
+                                    max(grid.obj$grid_df[1:", base::ceiling(top * highlight), ",i])),
+                  label = '", base::names(grid.obj$parameters$hyper_params)[i],"', values = ~", 
                                 base::names(grid.obj$parameters$hyper_params)[i],
                                 ")",
                                 sep = "")
@@ -320,11 +317,14 @@ plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parallel"){
                                   colorscale = 'Jet',
                                   showscale = TRUE,
                                   reversescale = F,
-                                  cmin = base::min(x$grid_df$mean),
-                                  cmax = base::min(x$grid_df$mean) * 1.5),
+                                  cmin = base::min(grid.obj$grid_df$mean),
+                                  cmax = grid.obj$grid_df$mean[top]),
                       dimensions = hw_dim
       )
     
   }
 }
+
+plot_grid(grid.obj = grid.obj, top = 50, highlight = 0.5)
+
 

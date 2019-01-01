@@ -371,11 +371,13 @@ plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parcoords",
                                   cmin = base::min(grid.obj$grid_df$mean),
                                   cmax = base::max(grid.obj$grid_df$mean[1:top]),
                                   colorbar=list(
-                                    title='Avg. MAPE'
+                                    title= base::paste("Avg.", grid.obj$parameters$optim, sep = " ")
                                   )),
                       dimensions = hw_dim
       ) %>% plotly::layout(title = base::paste(grid.obj$parameters$model, 
-                                               " Parameter Grid Search Results (Avg. MAPE) for Top ", 
+                                               " Parameters Grid Search Results (Avg. ",
+                                               grid.obj$parameters$optim,
+                                               ") for Top ", 
                                                top, 
                                                " Models", sep = ""),
                            xaxis = list(title = base::paste("Testing Over", grid.obj$parameters$periods, "Periods", sep = " ")))
@@ -396,10 +398,12 @@ plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parcoords",
                                        showscale = colors$showscale,
                                        reversescale = colors$reversescale,
                                        colorbar=list(
-                                         title='Avg. MAPE'
+                                         title= base::paste("Avg.", grid.obj$parameters$optim, sep = " ")
                                        ))) %>% 
       plotly::layout(title = base::paste(grid.obj$parameters$model, 
-                                         " Parameter Grid Search Results (Avg. MAPE) for Top ", 
+                                         " Parameters Grid Search Results (Avg. ",
+                                         grid.obj$parameters$optim,
+                                         ") for Top ", 
                                          top, 
                                          " Models", sep = ""),
                      xaxis = list(title = base::paste("Testing Over", grid.obj$parameters$periods, "Periods", sep = " ")))

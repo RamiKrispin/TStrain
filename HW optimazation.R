@@ -267,17 +267,57 @@ TSstudio::plot_forecast(fc)
 class(USgas_grid)
 
 
-plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parcoords"){
+plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parcoords", 
+                      colors = list(showscale = TRUE,
+                                    reversescale = FALSE,
+                                    colorscale = "Jet")){
   
   # Setting the pipe operator
   `%>%` <- magrittr::`%>%`
   
   # Setting variables
-  p <- NULL
+  color_option <- p <- NULL
+  
+  # List of optional color scale
+  color_option <- c("Greys","YlGnBu", "Greens", "YlOrRd",
+                  "Bluered", "RdBu", "Reds", "Blues", "Picnic",
+                  "Rainbow", "Portland", "Jet", "Hot", "Blackbody",
+                  "Earth", "Electric", "Viridis", "Cividis")
+  
+  
   # Error handling
   if(class(grid.obj) != "ts_grid"){
     stop("The input object is not a 'ts_grid' class")
   }
+  
+  if(!base::is.list(colors)){
+    warning("The 'colors' argument is not valid, using default option")
+    colors = base::list(showscale = TRUE,
+                  reversescale = FALSE,
+                  colorscale = "Jet")
+  } else if(!all(base::names(colors) %in% c("showscale", "reversescale", "colorscale"))){
+    warning("The 'colors' argument is not valid, using default option")
+    colors = base::list(showscale = TRUE,
+                        reversescale = FALSE,
+                        colorscale = "Jet")
+  } 
+  
+  if(!base::is.logical(colors$showscale)){
+    warning("The 'showscale' parameter of the 'colors' argument is not logical, using default option (TRUE)")
+    colors$showscale <- TRUE
+  }
+  
+  if(!base::is.logical(colors$reversescale)){
+    warning("The 'reversescale' parameter of the 'colors' argument is not logical, using default option (FALSE)")
+    colors$reversescale <- FALSE
+  }
+  
+  if(!base::is.character(colors$colorscale) || 
+     base::length(colors$colorscale) != 1 || 
+     !colors$colorscale %in% color_option){
+    warning("The 'colorscale' parameter of the 'colors' argument is not logical, using default option (Jet)")
+  }
+  
   
   if(type != "parcoords" && type != "3D"){
     warning("The value of the 'type' argument is not valid, using default option (parcoords)")
@@ -325,13 +365,21 @@ plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parcoords")
     p <- grid.obj$grid_df[1:top,] %>%
       plotly::plot_ly(type = 'parcoords',
                       line = list(color = ~ mean,
-                                  colorscale = 'Jet',
-                                  showscale = TRUE,
-                                  reversescale = F,
+                                  colorscale = colors$colorscale,
+                                  showscale = colors$showscale,
+                                  reversescale = colors$reversescale,
                                   cmin = base::min(grid.obj$grid_df$mean),
-                                  cmax = grid.obj$grid_df$mean[top]),
+                                  cmax = base::max(grid.obj$grid_df$mean[1:top]),
+                                  colorbar=list(
+                                    title='Avg. MAPE'
+                                  )),
                       dimensions = hw_dim
-      )
+      ) %>% plotly::layout(title = base::paste(grid.obj$parameters$model, 
+                                               " Parameter Grid Search Results (Avg. MAPE) for Top ", 
+                                               top, 
+                                               " Models", sep = ""),
+                           xaxis = list(title = base::paste("Testing Over", grid.obj$parameters$periods, "Periods", sep = " ")))
+    
     
   }
   }else if(type == "3D"){
@@ -344,9 +392,17 @@ plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parcoords")
                          y = ~ beta, 
                          z = ~ gamma, 
                          marker = list(color = ~ mean, 
-                                       showscale = TRUE, 
-                                       colorscale = "Viridis", 
-                                       reversescale =T))
+                                       colorscale = colors$colorscale,
+                                       showscale = colors$showscale,
+                                       reversescale = colors$reversescale,
+                                       colorbar=list(
+                                         title='Avg. MAPE'
+                                       ))) %>% 
+      plotly::layout(title = base::paste(grid.obj$parameters$model, 
+                                         " Parameter Grid Search Results (Avg. MAPE) for Top ", 
+                                         top, 
+                                         " Models", sep = ""),
+                     xaxis = list(title = base::paste("Testing Over", grid.obj$parameters$periods, "Periods", sep = " ")))
       } else if(base::length(base::names(grid.obj$parameters$hyper_params)) == 2){
       
         } else if(base::length(base::names(grid.obj$parameters$hyper_params)) <= 1){
@@ -358,7 +414,8 @@ plot_grid <- function(grid.obj, top = NULL, highlight = 0.1, type = "parcoords")
   return(p)
 }
 
-plot_grid(grid.obj = grid.obj, top = 100, highlight = 0.1) %>% plotly::layout(title = "Grid Search")
+plot_grid(grid.obj = grid.obj, top = 100, highlight = 0.1) 
+plot_grid(grid.obj = grid.obj, top = 100, highlight = 0.1, type = "3D") 
 
 plotly::plot_ly(data = grid.obj$grid_df[1:50,], x = ~ alpha, y = ~ beta, z = ~ gamma, 
                 marker = list(color = ~ mean, showscale = TRUE, colorscale = "Viridis", reversescale =T))

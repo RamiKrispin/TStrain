@@ -106,10 +106,10 @@ backtesting_lapply <- base::lapply(1:base::nrow(grid_df), function(i){
       a.arg.xreg <- a.arg
       a.arg.xreg$xreg <- a.xreg.train
       md <- base::do.call(forecast::auto.arima, c(list(train), a.arg.xreg))
-      fc <- forecast::forecast(md, h = window_size, xreg = a.xreg.test)
+      fc <- forecast::forecast(md, h = window_test, xreg = a.xreg.test)
     } else {
       md <- base::do.call(forecast::auto.arima, c(list(train), a.arg))
-      fc <- forecast::forecast(md, h = window_size)
+      fc <- forecast::forecast(md, h = window_test)
     }
     MAPE <-  base::round(forecast::accuracy(fc,test)[10], 2)
     RMSE <-  base::round(forecast::accuracy(fc,test)[4], 2)
@@ -153,10 +153,10 @@ backtesting_lapply <- base::lapply(1:base::nrow(grid_df), function(i){
                          window_type = grid_df$w_type[i],
                          MAPE = MAPE,
                          RMSE = RMSE)
-  } else if("e" %in% model_char){
+  } else if(grid_df$model[i] == "e"){
       md <- fc <- MAPE <- RMSE <- output <- NULL
       md <- base::do.call(forecast::ets, c(list(train), e.arg))
-      fc <- forecast::forecast(train, h = window_size)
+      fc <- forecast::forecast(train, h = window_test)
       MAPE <-  base::round(forecast::accuracy(fc, test)[10], 2)
       RMSE <-  base::round(forecast::accuracy(fc, test)[4], 2)
       
@@ -167,7 +167,7 @@ backtesting_lapply <- base::lapply(1:base::nrow(grid_df), function(i){
                            window_type = grid_df$w_type[i],
                            MAPE = MAPE,
                            RMSE = RMSE)
-    } else if("h" %in% model_char){
+    } else if(grid_df$model[i] == "h"){
       md <- fc <- MAPE <- RMSE <- output <-  NULL
       
       if("xreg" %in% names(h.arg$a.args) ||
@@ -177,24 +177,24 @@ backtesting_lapply <- base::lapply(1:base::nrow(grid_df), function(i){
         h.arg.xreg <- h.arg
         if("xreg" %in% names(h.arg$a.args)){
           h.arg.xreg$a.args$xreg <- xreg.hybrid.arima[1:length(train),]
-          h.test <- xreg.hybrid.arima[(length(train) + 1):(length(train) + window_size),]
+          h.test <- xreg.hybrid.arima[(length(train) + 1):(length(train) + window_test),]
         }
         
         if("xreg" %in% names(h.arg$n.args)){
           h.arg.xreg$n.args$xreg <- xreg.hybrid.nnetar[1:length(train),]
-          h.test <- xreg.hybrid.nnetar[(length(train) + 1):(length(train) + window_size),]
+          h.test <- xreg.hybrid.nnetar[(length(train) + 1):(length(train) + window_test),]
         }
         
         if("xreg" %in% names(h.arg$s.args)){
           h.arg.xreg$s.args$xreg <- xreg.hybrid.stlm[1:length(train),]
-          h.test <- xreg.hybrid.stlm[(length(train) + 1):(length(train) + window_size),]
+          h.test <- xreg.hybrid.stlm[(length(train) + 1):(length(train) + window_test),]
         }
         
         md <- base::do.call(forecastHybrid::hybridModel, c(list(train), h.arg.xreg))
-        fc <- forecast::forecast(md, h = window_size, xreg = base::as.data.frame(h.test))
+        fc <- forecast::forecast(md, h = window_test, xreg = base::as.data.frame(h.test))
       } else {
         md <- base::do.call(forecastHybrid::hybridModel, c(list(train), h.arg))
-        fc <- forecast::forecast(md, h = window_size)
+        fc <- forecast::forecast(md, h = window_test)
       }
       
       MAPE <-  base::round(forecast::accuracy(fc, test)[10], 2)
@@ -207,12 +207,59 @@ backtesting_lapply <- base::lapply(1:base::nrow(grid_df), function(i){
                            window_type = grid_df$w_type[i],
                            MAPE = MAPE,
                            RMSE = RMSE)
+    } else if(grid_df$model[i] == "n"){
+      md <- fc <- RMSE <- MAPE <- output <- NULL
+      if("xreg" %in% names(n.arg)){
+        n.xreg.train <- xreg.arima[1:length(train),]
+        n.xreg.test <- xreg.arima[(length(train) + 1):(length(train) + window_test),]
+        n.arg.xreg <- n.arg
+        n.arg.xreg$xreg <- n.xreg.train
+        md <- base::do.call(forecast::nnetar, c(list(train), n.arg.xreg))
+        fc <- forecast::forecast(md, h = window_test, xreg = n.xreg.test)
+      } else {
+        md <- base::do.call(forecast::nnetar, c(list(train), n.arg))
+        fc <- forecast::forecast(md, h = window_test)
+      }
+      
+      
+      MAPE <-  base::round(forecast::accuracy(fc, test)[10],2)
+      RMSE <-  base::round(forecast::accuracy(fc, test)[4],2)
+      output <- base::list(model_name = "nnetar",
+                           model = md,
+                           forecast = fc,
+                           period = grid_df$period[i],
+                           window_type = grid_df$w_type[i],
+                           MAPE = MAPE,
+                           RMSE = RMSE)
+    } else if(grid_df$model[i] == "t"){
+      md <- fc <- RMSE <- MAPE <- output <- NULL
+      md <- base::do.call(forecast::tbats, c(list(train), t.arg))
+      fc <- forecast::forecast(md, h = window_test)
+      MAPE <-  base::round(forecast::accuracy(fc, test)[10], 2)
+      RMSE <-  base::round(forecast::accuracy(fc, test)[4], 2)
+      output <- base::list(model_name = "tbats",
+                           model = md,
+                           forecast = fc,
+                           period = grid_df$period[i],
+                           window_type = grid_df$w_type[i],
+                           MAPE = MAPE,
+                           RMSE = RMSE)
+    } else if(grid_df$model[i] == "w"){
+      md <- fc <- RMSE <- MAPE <- output <- NULL
+      md <- base::do.call(stats::HoltWinters, c(list(train), w.arg))
+      fc <- forecast::forecast(md, h = window_test)
+      MAPE <- base::round(forecast::accuracy(fc, test)[10], 2)
+      RMSE <- base::round(forecast::accuracy(fc, test)[4], 2)
+      output <- base::list(model_name = "HoltWinters",
+                           model = md,
+                           forecast = fc,
+                           period = grid_df$period[i],
+                           window_type = grid_df$w_type[i],
+                           MAPE = MAPE,
+                           RMSE = RMSE)
     }
   
   
   output <- base::list()
   
 })
-
-length(backtesting_lapply)
-backtesting_lapply[[1]]

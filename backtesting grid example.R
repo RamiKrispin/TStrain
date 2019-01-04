@@ -1,3 +1,25 @@
+library(TSstudio)
+data("USgas")
+ts.obj <- USgas
+models = "abehntw"
+periods = 6
+window_space = 6
+window_test = 12
+window_length = NULL
+window_type = "expending"
+error = "MAPE"
+#window_size = 3,
+h = 3
+plot = TRUE
+a.arg = NULL
+b.arg = NULL
+e.arg = NULL
+h.arg = NULL
+n.arg = NULL
+t.arg = NULL
+w.arg = NULL
+xreg.h = NULL
+parallel = FALSE
 ts_backtesting <- function(ts.obj, 
                            models = "abehntw", 
                            periods = 6, 
@@ -93,16 +115,12 @@ if("xreg" %in% names(h.arg$s.args)){
 
 if(!base::is.numeric(periods) | periods != base::round(periods) | periods <= 0){
   stop("The value of the 'periods' parameters is no valid")
-} else {
-  if((base::length(ts.obj) - periods - window_size) < 2 * stats::frequency(ts.obj)){
-    stop("The length of the series is long enough to create a forecast")
-  }
-}
+} 
 
-if(!base::is.numeric(window_size) | window_size != base::round(window_size) | window_size <= 0){
-  stop("The value of the 'window_size' parameters is no valid")
+if(!base::is.numeric(window_test) | window_test != base::round(window_test) | window_test <= 0){
+  stop("The value of the 'window_test' parameters is no valid")
 } else {
-  if((base::length(ts.obj) - periods - window_size) < 2 * stats::frequency(ts.obj)){
+  if((base::length(ts.obj) - window_space * (periods - 1) - window_test) < 2 * stats::frequency(ts.obj)){
     stop("The length of the series is long enough to create a forecast")
   }
 }
@@ -428,7 +446,19 @@ backtesting_lapply <- base::lapply(1:base::nrow(grid_df), function(i){
 })  
 
 
-model_summary <- backtesting_lapply %>% 
-  purrr::modify_depth(~ifelse(length(.x) > 1, list(.x), .x), .depth = 2) %>% 
-  dplyr::bind_rows() 
 
+model_output <- base::list()
+periods_list <- paste("period_", 1:periods, sep ="")
+
+for(i in periods_list){
+  model_output[[i]] <- list()
+}
+model_output$ts.obj <- ts.obj
+model_output[["results"]] <- base::data.frame(model = purrr::map_chr(.x = backtesting_lapply, ~.x[["model_name"]]),
+                                 mape = purrr::map_dbl(.x = backtesting_lapply, ~.x[["MAPE"]]),
+                                 rmse = purrr::map_dbl(.x = backtesting_lapply, ~.x[["RMSE"]]),
+                                 period = purrr::map_dbl(.x = backtesting_lapply, ~.x[["period"]]))
+model_output$results %>% 
+dplyr::group_by(model) %>%
+dplyr::summarise(mape = mean(mape, na.rm = TRUE),
+                 rmse = mean(rmse, na.rm = TRUE))

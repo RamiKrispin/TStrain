@@ -450,15 +450,51 @@ backtesting_lapply <- base::lapply(1:base::nrow(grid_df), function(i){
 model_output <- base::list()
 periods_list <- paste("period_", 1:periods, sep ="")
 
-for(i in periods_list){
-  model_output[[i]] <- list()
+for(i in w_type){
+  model_output[[i]] <- base::list()
+  for(l in periods_list){
+    model_output[[i]][[l]] <- base::list()
+  }
 }
+
 model_output$ts.obj <- ts.obj
 model_output[["results"]] <- base::data.frame(model = purrr::map_chr(.x = backtesting_lapply, ~.x[["model_name"]]),
                                  mape = purrr::map_dbl(.x = backtesting_lapply, ~.x[["MAPE"]]),
                                  rmse = purrr::map_dbl(.x = backtesting_lapply, ~.x[["RMSE"]]),
                                  period = purrr::map_dbl(.x = backtesting_lapply, ~.x[["period"]]))
-model_output$results %>% 
-dplyr::group_by(model) %>%
-dplyr::summarise(mape = mean(mape, na.rm = TRUE),
-                 rmse = mean(rmse, na.rm = TRUE))
+
+
+if(error == "MAPE"){
+   model_output[["leaderboard"]]  <-  model_output$results %>% 
+        dplyr::group_by(model) %>%
+        dplyr::summarise(avgMAPE = base::mean(mape, na.rm = TRUE),
+                         sdMAPE = stats::sd(mape, na.rm = TRUE),
+                         avgRMSE = base::mean(rmse, na.rm = TRUE),
+                         sdRMSE = stats::sd(rmse, na.rm = TRUE),
+                         num_success_models = sum(!is.na(mape))) %>%
+        dplyr::arrange(avgMAPE)
+} else if(error == "RMSE"){
+  model_output[["leaderboard"]]  <-  model_output$results %>% 
+    dplyr::group_by(model) %>%
+    dplyr::summarise(avgMAPE = base::mean(mape, na.rm = TRUE),
+                     sdMAPE = stats::sd(mape, na.rm = TRUE),
+                     avgRMSE = base::mean(rmse, na.rm = TRUE),
+                     sdRMSE = stats::sd(rmse, na.rm = TRUE),
+                     num_success_models = sum(!is.na(rmse))) %>%
+    dplyr::arrange(avgRMSE)
+}
+
+
+
+for(i in 1:base::length(backtesting_lapply)){
+  
+  base::eval(base::parse(text = base::paste("model_output$", 
+              backtesting_lapply[[i]]$window_type,
+              "$period_", 
+              backtesting_lapply[[i]]$period,
+              "$", backtesting_lapply[[i]]$model_name,
+              " <-  base::list(model = backtesting_lapply[[i]]$model,",
+              "forecast = backtesting_lapply[[i]]$forecast)",
+              sep = "")))
+}
+model_output$expending$period_1$auto.arima

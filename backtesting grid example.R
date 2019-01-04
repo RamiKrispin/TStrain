@@ -426,3 +426,9 @@ backtesting_lapply <- base::lapply(1:base::nrow(grid_df), function(i){
   return(output)
   
 })  
+
+
+model_summary <- backtesting_lapply %>% 
+  purrr::modify_depth(~ifelse(length(.x) > 1, list(.x), .x), .depth = 2) %>% 
+  dplyr::bind_rows() 
+

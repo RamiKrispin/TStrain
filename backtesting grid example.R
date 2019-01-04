@@ -459,14 +459,15 @@ for(i in w_type){
 
 model_output$ts.obj <- ts.obj
 model_output[["results"]] <- base::data.frame(model = purrr::map_chr(.x = backtesting_lapply, ~.x[["model_name"]]),
-                                 mape = purrr::map_dbl(.x = backtesting_lapply, ~.x[["MAPE"]]),
-                                 rmse = purrr::map_dbl(.x = backtesting_lapply, ~.x[["RMSE"]]),
-                                 period = purrr::map_dbl(.x = backtesting_lapply, ~.x[["period"]]))
+                                              window_type = purrr::map_chr(.x = backtesting_lapply, ~.x[["window_type"]]),
+                                              mape = purrr::map_dbl(.x = backtesting_lapply, ~.x[["MAPE"]]),
+                                              rmse = purrr::map_dbl(.x = backtesting_lapply, ~.x[["RMSE"]]),
+                                              period = purrr::map_dbl(.x = backtesting_lapply, ~.x[["period"]]))
 
 
 if(error == "MAPE"){
    model_output[["leaderboard"]]  <-  model_output$results %>% 
-        dplyr::group_by(model) %>%
+        dplyr::group_by(model, window_type) %>%
         dplyr::summarise(avgMAPE = base::mean(mape, na.rm = TRUE),
                          sdMAPE = stats::sd(mape, na.rm = TRUE),
                          avgRMSE = base::mean(rmse, na.rm = TRUE),
@@ -475,7 +476,7 @@ if(error == "MAPE"){
         dplyr::arrange(avgMAPE)
 } else if(error == "RMSE"){
   model_output[["leaderboard"]]  <-  model_output$results %>% 
-    dplyr::group_by(model) %>%
+    dplyr::group_by(model, window_type) %>%
     dplyr::summarise(avgMAPE = base::mean(mape, na.rm = TRUE),
                      sdMAPE = stats::sd(mape, na.rm = TRUE),
                      avgRMSE = base::mean(rmse, na.rm = TRUE),

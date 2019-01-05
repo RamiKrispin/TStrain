@@ -302,15 +302,11 @@ for(i in w_type){
 
 
 backtesting_lapply <- base::lapply(1:base::nrow(grid_df), function(i){
-  ts_sub <- train <- test <- ts_partition <- output <- NULL
+  train <- test <- ts_partition <- output <- NULL
   
-  ts_sub <- stats::window(ts.obj, 
-                          start = stats::time(ts.obj)[grid_df$w_start[i]],
-                          end = stats::time(ts.obj)[grid_df$w_end[i]])
-  
-  ts_partition <- TSstudio::ts_split(ts_sub, sample.out = window_test)
-  train <- ts_partition$train
-  test <- ts_partition$test
+  train <- model_output[[grid_df$w_type[i]]][[paste("period_", grid_df$period[i], sep = "")]]$train
+  test <- model_output[[grid_df$w_type[i]]][[paste("period_", grid_df$period[i], sep = "")]]$test
+
   
   if(grid_df$model_abb[i] == "a"){
     md <- fc <- RMSE <- MAPE <- NULL

@@ -481,7 +481,8 @@ model_output[["results"]] <- base::data.frame(model = purrr::map_chr(.x = backte
                                               window_type = purrr::map_chr(.x = backtesting_lapply, ~.x[["window_type"]]),
                                               mape = purrr::map_dbl(.x = backtesting_lapply, ~.x[["MAPE"]]),
                                               rmse = purrr::map_dbl(.x = backtesting_lapply, ~.x[["RMSE"]]),
-                                              period = purrr::map_dbl(.x = backtesting_lapply, ~.x[["period"]]))
+                                              period = purrr::map_dbl(.x = backtesting_lapply, ~.x[["period"]]),
+                                              stringsAsFactors = FALSE)
 
 
 if(error == "MAPE"){
@@ -518,3 +519,49 @@ for(i in 1:base::length(backtesting_lapply)){
               sep = "")))
 }
 
+# plotting the object 
+results_df <- model_output$results
+
+if(window_type == "both"){
+  results_df$model_name <- paste(results_df$model, " (",
+                                 substr(results_df$window_type, 1, 1),
+                                 ")", sep = "")
+} else {
+  results_df$model_name <- results_df$model
+}
+
+p1 <- plotly::plot_ly()
+
+# Define the plot colors
+color_ramp <- viridis::inferno(base::length(base::unique(results_df$model_name)), 
+                               alpha = 1, 
+                               direction = 1, 
+                               begin = 0, 
+                               end = 0.9)
+
+style <- base::list()
+
+for(i in base::seq_along(base::unique(results_df$model_name))){
+  style[[i]] <- base::list(target = base::unique(results_df$model_name)[i], 
+                           value = list(line =list(color = color_ramp[i])))
+}
+
+p <- plotly::plot_ly(
+  type = 'scatter',
+  x = results_df$period,
+  y = results_df$mape,
+  text = paste("Model: ", results_df$model_name,
+               "<br>Period: ", results_df$period,
+               "<br>MAPE: ", results_df$mape,
+               "<br>RMSE: ", results_df$rmse),
+  hoverinfo = 'text',
+  mode = 'lines',
+  transforms = list(
+    list(
+      type = 'groupby',
+      groups = results_df$model_name,
+      styles = style
+    )
+  )
+)
+p

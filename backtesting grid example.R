@@ -565,3 +565,24 @@ p <- plotly::plot_ly(
   )
 )
 p
+
+
+error_df <- results_df %>% 
+            dplyr::select(model_name, period, mape) %>%
+            tidyr::spread(key = model_name, value = mape)
+
+error_df
+p2 <- plotly::plot_ly()
+for(r2 in 2:base::ncol(error_df)){
+  p2 <- base::suppressWarnings(p2 %>% plotly::add_trace(y = error_df[, r2], 
+                                                        type = "box", 
+                                                        boxpoints = "all", 
+                                                        jitter = 0.3,
+                                                        pointpos = -1.8, 
+                                                        name =  names(error_df)[r2], 
+                                                        marker = list(color = color_ramp[(r2 -1)]),
+                                                        line = list(color = color_ramp[(r2 -1)]),
+                                                        showlegend=F
+  ))
+}
+p2

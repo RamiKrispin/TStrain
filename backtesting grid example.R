@@ -8,6 +8,7 @@ window_test = 12
 window_length = 48
 window_type = "both"
 error = "MAPE"
+top = "all"
 #window_size = 3,
 h = 3
 plot = TRUE
@@ -494,6 +495,7 @@ if(error == "MAPE"){
                          sdRMSE = stats::sd(rmse, na.rm = TRUE),
                          num_success_models = sum(!is.na(mape))) %>%
         dplyr::arrange(avgMAPE)
+   
 } else if(error == "RMSE"){
   model_output[["leaderboard"]]  <-  model_output$results %>% 
     dplyr::group_by(model, window_type) %>%
@@ -505,7 +507,8 @@ if(error == "MAPE"){
     dplyr::arrange(avgRMSE)
 }
 
-
+top_models <- model_output$leaderboard[1:top,] %>% dplyr::select(model, window_type) %>% 
+  dplyr::mutate(flag = 1)
 
 for(i in 1:base::length(backtesting_lapply)){
   
@@ -520,11 +523,15 @@ for(i in 1:base::length(backtesting_lapply)){
 }
 
 # plotting the object 
-results_df <- model_output$results
+if(top != "all"){
+  results_df <- model_output$results %>% dplyr::left_join(top_models) 
+} else{
+  results_df <- model_output$results 
+}
 
 if(window_type == "both"){
   results_df$model_name <- paste(results_df$model, " (",
-                                 substr(results_df$window_type, 1, 1),
+                                 base::substr(results_df$window_type, 1, 1),
                                  ")", sep = "")
 } else {
   results_df$model_name <- results_df$model
@@ -533,7 +540,7 @@ if(window_type == "both"){
 p1 <- plotly::plot_ly()
 
 # Define the plot colors
-color_ramp <- viridis::inferno(base::length(base::unique(results_df$model_name)), 
+color_ramp <- viridis::viridis(base::length(base::unique(results_df$model_name)), 
                                alpha = 1, 
                                direction = 1, 
                                begin = 0, 

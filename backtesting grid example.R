@@ -5,8 +5,8 @@ models = "abehntw"
 periods = 6
 window_space = 6
 window_test = 12
-window_length = NULL
-window_type = "expending"
+window_length = 48
+window_type = "both"
 error = "MAPE"
 #window_size = 3,
 h = 3
@@ -268,6 +268,39 @@ grid_df <- grid_df %>%
 
 head(grid_df)  
 
+
+model_output <- base::list()
+periods_list <- paste("period_", 1:periods, sep ="")
+
+# Defining the window type
+for(i in w_type){
+  periods_map1 <- NULL
+  model_output[[i]] <- base::list()
+  periods_map1 <- periods_map
+  if(i == "sliding"){
+    periods_map1$window_test <- window_test
+    periods_map1$window_length <- window_length
+    periods_map1$w_start <- periods_map1$w_end - periods_map1$window_length - periods_map1$window_test + 1
+  } else if(i == "expending"){
+    periods_map1$w_start <- 1
+  }
+  for(l in base::seq_along(periods_list)){
+    ts_sub <- train <- test <- NULL
+    
+    ts_sub <- stats::window(ts.obj, 
+                            start = stats::time(ts.obj)[periods_map1$w_start[l]],
+                            end = stats::time(ts.obj)[periods_map1$w_end[l]])
+    
+    ts_partition <- TSstudio::ts_split(ts_sub, sample.out = window_test)
+    train <- ts_partition$train
+    test <- ts_partition$test
+    
+    model_output[[i]][[periods_list[l]]] <- base::list(train = train, test = test)
+  }
+}
+
+
+
 backtesting_lapply <- base::lapply(1:base::nrow(grid_df), function(i){
   ts_sub <- train <- test <- ts_partition <- output <- NULL
   
@@ -446,17 +479,7 @@ backtesting_lapply <- base::lapply(1:base::nrow(grid_df), function(i){
 })  
 
 
-
-model_output <- base::list()
-periods_list <- paste("period_", 1:periods, sep ="")
-
-for(i in w_type){
-  model_output[[i]] <- base::list()
-  for(l in periods_list){
-    model_output[[i]][[l]] <- base::list()
-  }
-}
-
+# Parsing the forecast outputs 
 model_output$ts.obj <- ts.obj
 model_output[["results"]] <- base::data.frame(model = purrr::map_chr(.x = backtesting_lapply, ~.x[["model_name"]]),
                                               window_type = purrr::map_chr(.x = backtesting_lapply, ~.x[["window_type"]]),
@@ -498,4 +521,4 @@ for(i in 1:base::length(backtesting_lapply)){
               "forecast = backtesting_lapply[[i]]$forecast)",
               sep = "")))
 }
-model_output$expending$period_1$auto.arima
+

@@ -489,7 +489,7 @@ grid_forecast_df$model_name <- base::paste(grid_forecast_df$model,
                                            base::substr(grid_forecast_df$w_type,1,1),
                                            ")", sep = "")
 
-final_forecast <- base::lapply(base::seq_along(grid_forecast_df), function(i){
+final_forecast <- base::lapply(1:base::nrow(grid_forecast_df), function(i){
   output <- train <- NULL
   output <- base::list()
   

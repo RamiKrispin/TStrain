@@ -40,7 +40,7 @@ ts_backtesting <- function(ts.obj,
                            t.arg = NULL,
                            w.arg = NULL,
                            xreg.h = NULL,
-                           parallel = FALSE){}
+                           parallel = FALSE){
 
 `%>%` <- magrittr::`%>%` 
 
@@ -794,3 +794,4 @@ for(r2 in 2:base::ncol(error_df)){
   ))
 }
 p2
+}

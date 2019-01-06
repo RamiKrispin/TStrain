@@ -10,7 +10,7 @@ window_type = "both"
 error = "MAPE"
 top = "all"
 #window_size = 3,
-h = 3
+h = 60
 plot = TRUE
 a.arg = NULL
 b.arg = NULL
@@ -475,15 +475,38 @@ backtesting_train <- base::lapply(1:base::nrow(grid_df), function(i){
   
 })  
 
+grid_forecast_df <- base::expand.grid(model_list, w_type, stringsAsFactors = FALSE)
 
-final_forecast <- base::lapply(base::seq_along(model_list), function(i){
-  output <- NULL
+names(grid_forecast_df) <- c("model_abb",  "w_type")
+
+grid_forecast_df$w_start <- ifelse(grid_forecast_df$w_type == "sliding",
+                                           base::length(ts.obj) -  window_length + 1,
+                                           1)
+
+grid_forecast_df <- grid_forecast_df %>% dplyr::left_join(models_map)
+grid_forecast_df$model_name <- base::paste(grid_forecast_df$model, 
+                                           " (",
+                                           base::substr(grid_forecast_df$w_type,1,1),
+                                           ")", sep = "")
+
+final_forecast <- base::lapply(base::seq_along(grid_forecast_df), function(i){
+  output <- train <- NULL
   output <- base::list()
-  if(model_list[i] == "a"){
+  
+  # Setting the training partition
+  if(grid_forecast_df$w_type[i] == "expending"){
+    train <- ts.obj
+  } else if(grid_forecast_df$w_type[i] == "sliding"){
+    train <- ts_sub <- stats::window(ts.obj, 
+                                     start = stats::time(ts.obj)[grid_forecast_df$w_start[i]])
+  }
+  
+  
+  if(grid_forecast_df$model_abb[i] == "a"){
     md <- fc <- NULL
     a.arg$parallel <- parallel
     md <- base::do.call(forecast::auto.arima, 
-                                   c(base::list(ts.obj), 
+                                   c(base::list(train), 
                                      a.arg))
     
     if("xreg" %in% base::names(a.arg)){
@@ -491,34 +514,37 @@ final_forecast <- base::lapply(base::seq_along(model_list), function(i){
     } else{
       fc <- forecast::forecast(md, h = h)
     }
-    output[["auto.arima"]] <- base::list(model = md, forecast = fc)
+    output[[grid_forecast_df$model_name[i]]] <- base::list(model = md, forecast = fc)
     
-  } else if(model_list[i] == "w"){
+  } else if(grid_forecast_df$model_abb[i] == "w"){
     md <- fc <- NULL
-    md <- base::do.call(stats::HoltWinters, c(base::list(ts.obj), w.arg))
+    md <- base::do.call(stats::HoltWinters, c(base::list(train), w.arg))
     fc <- forecast::forecast(md, h = h)
-    output <- base::list(HoltWinters = base::list(model = md, forecast = fc))
-  } else if(model_list[i] == "e"){
+    output[[grid_forecast_df$model_name[i]]] <- base::list(model = md, forecast = fc)
+    
+  } else if(grid_forecast_df$model_abb[i] == "e"){
     md <- fc <- NULL
-    md <- base::do.call(forecast::ets, c(base::list(ts.obj), e.arg))
+    md <- base::do.call(forecast::ets, c(base::list(train), e.arg))
     fc <- forecast::forecast(md, h = h)
-    output <- base::list(ets = base::list(model = md, forecast = fc))
-  } else if(model_list[i] == "n"){
+    output[[grid_forecast_df$model_name[i]]] <- base::list(model = md, forecast = fc)
+    
+  } else if(grid_forecast_df$model_abb[i] == "n"){
     md <- fc <- NULL
-    md <- base::do.call(forecast::nnetar, c(base::list(ts.obj), n.arg))
+    md <- base::do.call(forecast::nnetar, c(base::list(train), n.arg))
     if("xreg" %in% base::names(n.arg)){
       fc <- forecast::forecast(md, h = h, xreg = xreg.h)
     } else{
       fc <- forecast::forecast(md, h = h)
     }
-    output <- base::list(nnetar = base::list(model = md, forecast = fc))
-  } else if(model_list[i] == "t"){
+    output[[grid_forecast_df$model_name[i]]] <- base::list(model = md, forecast = fc)
+  } else if(grid_forecast_df$model_abb[i] == "t"){
     md <- fc <- NULL
     t.arg$use.parallel <- parallel
-    md <- base::do.call(forecast::tbats, c(list(ts.obj), t.arg))
+    md <- base::do.call(forecast::tbats, c(list(train), t.arg))
     fc <- forecast::forecast(md, h = h)
-    output <- base::list(tbats = base::list(model = md, forecast = fc))
-  }else if(model_list[i] == "b"){
+    output[[grid_forecast_df$model_name[i]]] <- base::list(model = md, forecast = fc)
+    
+  }else if(grid_forecast_df$model_abb[i] == "b"){
     
     # Check if the bsts arguments are valid
     if(is.null(b.arg)){
@@ -606,27 +632,27 @@ final_forecast <- base::lapply(base::seq_along(model_list), function(i){
     md <- fc <- ss <- fit.bsts <- burn <-  NULL
     ss <- list()
     if(b.arg$linear_trend){
-      ss <- bsts::AddLocalLinearTrend(ss, ts.obj) 
+      ss <- bsts::AddLocalLinearTrend(ss, train) 
     }
     if(b.arg$seasonal){
-      ss <- bsts::AddSeasonal(ss, ts.obj, 
-                              nseasons = stats::frequency(ts.obj))
+      ss <- bsts::AddSeasonal(ss, train, 
+                              nseasons = stats::frequency(train))
     }
     
-    md <- bsts::bsts(ts.obj, 
+    md <- bsts::bsts(train, 
                           state.specification = ss, 
                           niter = b.arg$niter, 
                           ping= b.arg$ping, 
                           seed= b.arg$seed,
                           family = b.arg$family)
     fc <- stats::predict(md, horizon = h, quantiles = c(.025, .975))
-    output <- base::list(bsts = base::list(model = md, forecast = fc))
+    output[[grid_forecast_df$model_name[i]]] <- base::list(model = md, forecast = fc)
   }
   
-  if(model_list[i] == "h"){
+  if(grid_forecast_df$model_abb[i] == "h"){
     md <- fc <- NULL
     h.arg$parallel <- parallel
-    md <- base::do.call(forecastHybrid::hybridModel, c(list(ts.obj), h.arg))
+    md <- base::do.call(forecastHybrid::hybridModel, c(list(train), h.arg))
     
     
     if("xreg" %in% names(h.arg$a.args) ||
@@ -637,7 +663,7 @@ final_forecast <- base::lapply(base::seq_along(model_list), function(i){
       fc <- forecast::forecast(md, h = h)
     }
     
-    output <- base::list(hybridModel = base::list(model = md, forecast = fc))
+    output[[grid_forecast_df$model_name[i]]] <- base::list(model = md, forecast = fc)
   }
   
   
@@ -650,6 +676,7 @@ final_forecast <- base::lapply(base::seq_along(model_list), function(i){
 
 # Parsing the forecast outputs 
 model_output$ts.obj <- ts.obj
+model_output$forecast <- final_forecast
 model_output[["results"]] <- base::data.frame(model = purrr::map_chr(.x = backtesting_train, ~.x[["model_name"]]),
                                               window_type = purrr::map_chr(.x = backtesting_train, ~.x[["window_type"]]),
                                               mape = purrr::map_dbl(.x = backtesting_train, ~.x[["MAPE"]]),

@@ -485,9 +485,9 @@ grid_forecast_df$w_start <- ifelse(grid_forecast_df$w_type == "sliding",
 
 grid_forecast_df <- grid_forecast_df %>% dplyr::left_join(models_map)
 grid_forecast_df$model_name <- base::paste(grid_forecast_df$model, 
-                                           " (",
+                                           "_",
                                            base::substr(grid_forecast_df$w_type,1,1),
-                                           ")", sep = "")
+                                           sep = "")
 
 final_forecast <- base::lapply(1:base::nrow(grid_forecast_df), function(i){
   output <- train <- NULL
@@ -514,19 +514,19 @@ final_forecast <- base::lapply(1:base::nrow(grid_forecast_df), function(i){
     } else{
       fc <- forecast::forecast(md, h = h)
     }
-    output[[grid_forecast_df$model_name[i]]] <- base::list(model = md, forecast = fc)
+    output <- base::list(model = md, forecast = fc)
     
   } else if(grid_forecast_df$model_abb[i] == "w"){
     md <- fc <- NULL
     md <- base::do.call(stats::HoltWinters, c(base::list(train), w.arg))
     fc <- forecast::forecast(md, h = h)
-    output[[grid_forecast_df$model_name[i]]] <- base::list(model = md, forecast = fc)
+    output <- base::list(model = md, forecast = fc)
     
   } else if(grid_forecast_df$model_abb[i] == "e"){
     md <- fc <- NULL
     md <- base::do.call(forecast::ets, c(base::list(train), e.arg))
     fc <- forecast::forecast(md, h = h)
-    output[[grid_forecast_df$model_name[i]]] <- base::list(model = md, forecast = fc)
+    output <- base::list(model = md, forecast = fc)
     
   } else if(grid_forecast_df$model_abb[i] == "n"){
     md <- fc <- NULL
@@ -536,13 +536,13 @@ final_forecast <- base::lapply(1:base::nrow(grid_forecast_df), function(i){
     } else{
       fc <- forecast::forecast(md, h = h)
     }
-    output[[grid_forecast_df$model_name[i]]] <- base::list(model = md, forecast = fc)
+    output <- base::list(model = md, forecast = fc)
   } else if(grid_forecast_df$model_abb[i] == "t"){
     md <- fc <- NULL
     t.arg$use.parallel <- parallel
     md <- base::do.call(forecast::tbats, c(list(train), t.arg))
     fc <- forecast::forecast(md, h = h)
-    output[[grid_forecast_df$model_name[i]]] <- base::list(model = md, forecast = fc)
+    output <- base::list(model = md, forecast = fc)
     
   }else if(grid_forecast_df$model_abb[i] == "b"){
     
@@ -646,7 +646,7 @@ final_forecast <- base::lapply(1:base::nrow(grid_forecast_df), function(i){
                           seed= b.arg$seed,
                           family = b.arg$family)
     fc <- stats::predict(md, horizon = h, quantiles = c(.025, .975))
-    output[[grid_forecast_df$model_name[i]]] <- base::list(model = md, forecast = fc)
+    output <- base::list(model = md, forecast = fc)
   }
   
   if(grid_forecast_df$model_abb[i] == "h"){
@@ -663,15 +663,14 @@ final_forecast <- base::lapply(1:base::nrow(grid_forecast_df), function(i){
       fc <- forecast::forecast(md, h = h)
     }
     
-    output[[grid_forecast_df$model_name[i]]] <- base::list(model = md, forecast = fc)
+    output <- base::list(model = md, forecast = fc)
   }
   
   
   return(output)
   
 }) %>%
-  stats::setNames(purrr::map_chr(.x = 1:length(final_forecast), 
-                                 ~ final_forecast[[.x]] %>% names()))
+  stats::setNames(grid_forecast_df$model_name)
 
 
 # Parsing the forecast outputs 

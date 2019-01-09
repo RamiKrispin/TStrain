@@ -249,11 +249,14 @@ if(!base::is.null(top)){
   if(!base::is.numeric(top) & top != "all"){
     warning("The 'top' argument is not valid, setting it to NULL (default)")
     top <- NULL
-  } else if(top %% 1 != 0){
+  } else if(top %% 1 != 0 || top < 1){
     warning("The 'top' argument is not valid, setting it to NULL (default)")
     top <- NULL
   }
-}  
+} else if(top > base::nchar(models) * length(w_type)){
+  warning("The value of the 'top' argument exceding the number of models, setting it to NULL (default)")
+  top <-  base::nchar(models) * length(w_type)
+}
 
 #### Testing ####
 

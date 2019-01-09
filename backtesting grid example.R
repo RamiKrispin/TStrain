@@ -246,7 +246,7 @@ if(window_type == "both"){
 
 
 if(!base::is.null(top)){
-  if(!base::is.numeric(top) & top != "all"){
+  if(!base::is.numeric(top) ){
     warning("The 'top' argument is not valid, setting it to NULL (default)")
     top <- NULL
   } else if(top %% 1 != 0 || top < 1){

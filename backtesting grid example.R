@@ -32,6 +32,7 @@ ts_backtesting <- function(ts.obj,
                            #window_size = 3,
                            h = 3,
                            plot = TRUE,
+                           top = NULL,
                            a.arg = NULL,
                            b.arg = NULL,
                            e.arg = NULL,
@@ -229,6 +230,30 @@ if(is.null(b.arg)){
   
 }
 
+if(!base::is.character(window_type)){
+  warning("The value of the 'window_type' argument is not valid, setting it to 'expending'")
+  window_type <- "expending"
+} else if(!window_type %in% c("both", "sliding", "expending")){
+  warning("The value of the 'window_type' argument is not valid, setting it to 'expending'")
+  window_type <- "expending"
+}
+
+if(window_type == "both"){
+  w_type <- c("sliding", "expending")
+} else{
+  w_type <- window_type
+}
+
+
+if(!base::is.null(top)){
+  if(!base::is.numeric(top) & top != "all"){
+    warning("The 'top' argument is not valid, setting it to NULL (default)")
+    top <- NULL
+  } else if(top %% 1 != 0){
+    warning("The 'top' argument is not valid, setting it to NULL (default)")
+    top <- NULL
+  }
+}  
 
 #### Testing ####
 
@@ -247,12 +272,6 @@ periods_map <- base::data.frame(w_end = w_end,
                                 period = 1:periods)
 
 model_list <- base::strsplit(models, "") %>% base::unlist()
-if(window_type == "both"){
-  w_type <- c("sliding", "expending")
-} else{
-  w_type <- window_type
-}
-
 
 
 grid_df <- base::expand.grid(model_list, w_end, w_type, stringsAsFactors = FALSE)
@@ -775,6 +794,7 @@ p
 
 
 
+
 error_df <- results_df %>% 
             dplyr::select(model_name, period, mape) %>%
             tidyr::spread(key = model_name, value = mape)
@@ -794,4 +814,12 @@ for(r2 in 2:base::ncol(error_df)){
   ))
 }
 p2
+
+model_output$plot1 <- p 
+model_output$plot2 <- p2 
+
+return(model_output)
 }
+
+x <- ts_backtesting(ts.obj = USgas, h = 12)
+  

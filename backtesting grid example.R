@@ -9,7 +9,6 @@ window_length = 48
 window_type = "both"
 error = "MAPE"
 top = "all"
-#window_size = 3,
 h = 60
 plot = TRUE
 a.arg = NULL
@@ -20,7 +19,7 @@ n.arg = NULL
 t.arg = NULL
 w.arg = NULL
 xreg.h = NULL
-parallel = FALSE
+parallel = TRUE
 ts_backtesting <- function(ts.obj, 
                            models = "abehntw", 
                            periods = 6, 
@@ -41,7 +40,8 @@ ts_backtesting <- function(ts.obj,
                            t.arg = NULL,
                            w.arg = NULL,
                            xreg.h = NULL,
-                           parallel = FALSE){
+                           parallel = TRUE,
+                           n_cores = future::availableCores() - 1,){
 
 `%>%` <- magrittr::`%>%` 
 
@@ -322,8 +322,186 @@ for(i in w_type){
   }
 }
 
+start <- Sys.time()
+if(parallel){
+future::plan(future::multiprocess, workers = n_cores) 
+backtesting_train <- future.apply::future_lapply(1:base::nrow(grid_df), function(i){
+  train <- test <- ts_partition <- output <- NULL
+  
+  train <- model_output[[grid_df$w_type[i]]][[paste("period_", grid_df$period[i], sep = "")]]$train
+  test <- model_output[[grid_df$w_type[i]]][[paste("period_", grid_df$period[i], sep = "")]]$test
+  
+  
+  if(grid_df$model_abb[i] == "a"){
+    md <- fc <- RMSE <- MAPE <- NULL
+    if("xreg" %in% names(a.arg)){
+      a.xreg.train <- xreg.arima[1:length(train),]
+      a.xreg.test <- xreg.arima[(length(train) + 1):(length(train) + window_test),]
+      a.arg.xreg <- a.arg
+      a.arg.xreg$xreg <- a.xreg.train
+      md <- base::do.call(forecast::auto.arima, c(list(train), a.arg.xreg))
+      fc <- forecast::forecast(md, h = window_test, xreg = a.xreg.test)
+    } else {
+      md <- base::do.call(forecast::auto.arima, c(list(train), a.arg))
+      fc <- forecast::forecast(md, h = window_test)
+    }
+    MAPE <-  base::round(forecast::accuracy(fc,test)[10], 2)
+    RMSE <-  base::round(forecast::accuracy(fc,test)[4], 2)
+    
+    output <- base::list(model_name = "auto.arima",
+                         model = md,
+                         forecast = fc,
+                         period = grid_df$period[i],
+                         window_type = grid_df$w_type[i],
+                         MAPE = MAPE,
+                         RMSE = RMSE)
+  } else if(grid_df$model_abb[i] == "b"){
+    md <- fc <- ss <- RMSE <- MAPE <-  NULL
+    ss <- list()
+    if(b.arg$linear_trend){
+      ss <- bsts::AddLocalLinearTrend(ss, ts.obj) 
+    }
+    if(b.arg$seasonal){
+      ss <- bsts::AddSeasonal(ss, ts.obj, 
+                              nseasons = stats::frequency(ts.obj))
+    }
+    
+    md <- bsts::bsts(train, 
+                     state.specification = ss, 
+                     niter = b.arg$niter, 
+                     ping= b.arg$ping, 
+                     seed= b.arg$seed,
+                     family = b.arg$family)
+    
+    fc <- stats::predict(md, horizon = window_test, quantiles = c(.025, .975))
+    
+    
+    pred <- fc$mean
+    MAPE <- base::round(mean(100 * base::abs((test - pred) / test)), 2)
+    RMSE <- base::round((mean((test - pred)^ 2)) ^ 0.5, 2)
+    
+    output <- base::list(model_name = "bsts",
+                         model = md,
+                         forecast = fc,
+                         period = grid_df$period[i],
+                         window_type = grid_df$w_type[i],
+                         MAPE = MAPE,
+                         RMSE = RMSE)
+  } else if(grid_df$model_abb[i] == "e"){
+    md <- fc <- MAPE <- RMSE <- output <- NULL
+    md <- base::do.call(forecast::ets, c(list(train), e.arg))
+    fc <- forecast::forecast(train, h = window_test)
+    MAPE <-  base::round(forecast::accuracy(fc, test)[10], 2)
+    RMSE <-  base::round(forecast::accuracy(fc, test)[4], 2)
+    
+    output <- base::list(model_name = "ets",
+                         model = md,
+                         forecast = fc,
+                         period = grid_df$period[i],
+                         window_type = grid_df$w_type[i],
+                         MAPE = MAPE,
+                         RMSE = RMSE)
+  } else if(grid_df$model_abb[i] == "h"){
+    md <- fc <- MAPE <- RMSE <- output <-  NULL
+    
+    if("xreg" %in% names(h.arg$a.args) ||
+       "xreg" %in% names(h.arg$n.args) ||
+       "xreg" %in% names(h.arg$s.args)){
+      h.arg.xreg <- h.test <-  NULL
+      h.arg.xreg <- h.arg
+      if("xreg" %in% names(h.arg$a.args)){
+        h.arg.xreg$a.args$xreg <- xreg.hybrid.arima[1:length(train),]
+        h.test <- xreg.hybrid.arima[(length(train) + 1):(length(train) + window_test),]
+      }
+      
+      if("xreg" %in% names(h.arg$n.args)){
+        h.arg.xreg$n.args$xreg <- xreg.hybrid.nnetar[1:length(train),]
+        h.test <- xreg.hybrid.nnetar[(length(train) + 1):(length(train) + window_test),]
+      }
+      
+      if("xreg" %in% names(h.arg$s.args)){
+        h.arg.xreg$s.args$xreg <- xreg.hybrid.stlm[1:length(train),]
+        h.test <- xreg.hybrid.stlm[(length(train) + 1):(length(train) + window_test),]
+      }
+      
+      md <- base::do.call(forecastHybrid::hybridModel, c(list(train), h.arg.xreg))
+      fc <- forecast::forecast(md, h = window_test, xreg = base::as.data.frame(h.test))
+    } else {
+      md <- base::do.call(forecastHybrid::hybridModel, c(list(train), h.arg))
+      fc <- forecast::forecast(md, h = window_test)
+    }
+    
+    MAPE <-  base::round(forecast::accuracy(fc, test)[10], 2)
+    RMSE <-  base::round(forecast::accuracy(fc, test)[4], 2)
+    
+    output <- base::list(model_name = "hybridModel",
+                         model = md,
+                         forecast = fc,
+                         period = grid_df$period[i],
+                         window_type = grid_df$w_type[i],
+                         MAPE = MAPE,
+                         RMSE = RMSE)
+  } else if(grid_df$model_abb[i] == "n"){
+    md <- fc <- RMSE <- MAPE <- output <- NULL
+    if("xreg" %in% names(n.arg)){
+      n.xreg.train <- xreg.arima[1:length(train),]
+      n.xreg.test <- xreg.arima[(length(train) + 1):(length(train) + window_test),]
+      n.arg.xreg <- n.arg
+      n.arg.xreg$xreg <- n.xreg.train
+      md <- base::do.call(forecast::nnetar, c(list(train), n.arg.xreg))
+      fc <- forecast::forecast(md, h = window_test, xreg = n.xreg.test)
+    } else {
+      md <- base::do.call(forecast::nnetar, c(list(train), n.arg))
+      fc <- forecast::forecast(md, h = window_test)
+    }
+    
+    
+    MAPE <-  base::round(forecast::accuracy(fc, test)[10],2)
+    RMSE <-  base::round(forecast::accuracy(fc, test)[4],2)
+    output <- base::list(model_name = "nnetar",
+                         model = md,
+                         forecast = fc,
+                         period = grid_df$period[i],
+                         window_type = grid_df$w_type[i],
+                         MAPE = MAPE,
+                         RMSE = RMSE)
+  } else if(grid_df$model_abb[i] == "t"){
+    md <- fc <- RMSE <- MAPE <- output <- NULL
+    md <- base::do.call(forecast::tbats, c(list(train), t.arg))
+    fc <- forecast::forecast(md, h = window_test)
+    MAPE <-  base::round(forecast::accuracy(fc, test)[10], 2)
+    RMSE <-  base::round(forecast::accuracy(fc, test)[4], 2)
+    output <- base::list(model_name = "tbats",
+                         model = md,
+                         forecast = fc,
+                         period = grid_df$period[i],
+                         window_type = grid_df$w_type[i],
+                         MAPE = MAPE,
+                         RMSE = RMSE)
+  } else if(grid_df$model_abb[i] == "w"){
+    md <- fc <- RMSE <- MAPE <- output <- NULL
+    md <- base::do.call(stats::HoltWinters, c(list(train), w.arg))
+    fc <- forecast::forecast(md, h = window_test)
+    MAPE <- base::round(forecast::accuracy(fc, test)[10], 2)
+    RMSE <- base::round(forecast::accuracy(fc, test)[4], 2)
+    output <- base::list(model_name = "HoltWinters",
+                         model = md,
+                         forecast = fc,
+                         period = grid_df$period[i],
+                         window_type = grid_df$w_type[i],
+                         MAPE = MAPE,
+                         RMSE = RMSE)
+  }
+  
+  
+  return(output)
+  
+})  
+}
+print(Sys.time() - start)
 
 
+start <- Sys.time()
 backtesting_train <- base::lapply(1:base::nrow(grid_df), function(i){
   train <- test <- ts_partition <- output <- NULL
   
@@ -496,7 +674,7 @@ backtesting_train <- base::lapply(1:base::nrow(grid_df), function(i){
   return(output)
   
 })  
-
+print(Sys.time() - start)
 grid_forecast_df <- base::expand.grid(model_list, w_type, stringsAsFactors = FALSE)
 
 names(grid_forecast_df) <- c("model_abb",  "w_type")
@@ -775,7 +953,7 @@ for(i in base::seq_along(base::unique(results_df$model_name))){
                            value = list(line =list(color = color_ramp[i])))
 }
 
-p <- plotly::plot_ly(
+p1 <- plotly::plot_ly(
   type = 'scatter',
   x = results_df$period,
   y = results_df$mape,
@@ -793,7 +971,7 @@ p <- plotly::plot_ly(
     )
   )
 )
-p
+p1
 
 
 
@@ -818,7 +996,7 @@ for(r2 in 2:base::ncol(error_df)){
 }
 p2
 
-model_output$plot1 <- p 
+model_output$plot1 <- p1 
 model_output$plot2 <- p2 
 
 return(model_output)

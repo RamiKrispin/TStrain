@@ -1,26 +1,30 @@
+rm(list = ls())
 library(TSstudio)
 data("USgas")
-ts.obj <- USgas
-models = "abehntw"
-periods = 6
-window_space = 6
-window_test = 12
-window_length = 48
-window_type = "both"
-error = "MAPE"
-top = "all"
-h = 60
-plot = TRUE
-a.arg = NULL
-b.arg = NULL
-e.arg = NULL
-h.arg = NULL
-n.arg = NULL
-t.arg = NULL
-w.arg = NULL
-xreg.h = NULL
-parallel = TRUE
-ts_backtesting <- function(ts.obj, 
+
+# ts.obj <- USgas
+# models = "abehntw"
+# periods = 6
+# window_space = 6
+# window_test = 12
+# window_length = 48
+# window_type = "both"
+# error = "MAPE"
+# top = "all"
+# h = 60
+# plot = TRUE
+# a.arg = NULL
+# b.arg = NULL
+# e.arg = NULL
+# h.arg = NULL
+# n.arg = NULL
+# t.arg = NULL
+# w.arg = NULL
+# xreg.h = NULL
+# parallel = TRUE
+
+
+ts_test <- function(ts.obj, 
                            models = "abehntw", 
                            periods = 6, 
                            window_space = 6,
@@ -41,7 +45,7 @@ ts_backtesting <- function(ts.obj,
                            w.arg = NULL,
                            xreg.h = NULL,
                            parallel = TRUE,
-                           n_cores = future::availableCores() - 1,){
+                           n_cores = future::availableCores() - 1){
 
 `%>%` <- magrittr::`%>%` 
 
@@ -244,21 +248,18 @@ if(window_type == "both"){
   w_type <- window_type
 }
 
-
-if(!base::is.null(top)){
-  if(!base::is.numeric(top) ){
-    warning("The 'top' argument is not valid, setting it to NULL (default)")
-    top <- NULL
+if(base::is.null(top)){
+  top <-  base::nchar(models) * length(w_type)
+} else if(!base::is.null(top)){
+  if(!base::is.numeric(top)){
+    warning("The 'top' argument is not valid, will show all models")
+    top <- base::nchar(models) * length(w_type)
   } else if(top %% 1 != 0 || top < 1){
-    warning("The 'top' argument is not valid, setting it to NULL (default)")
-    top <- NULL
+    warning("The 'top' argument is not valid, will show all models")
+    top <- base::nchar(models) * length(w_type)
   }
-} else if(top > base::nchar(models) * length(w_type)){
-  warning("The value of the 'top' argument exceding the number of models, setting it to NULL (default)")
-  top <-  base::nchar(models) * length(w_type)
-} else if(top == "all"){
-  top <-  base::nchar(models) * length(w_type)
 }
+
 
 #### Testing ####
 
@@ -499,6 +500,205 @@ backtesting_train <- future.apply::future_lapply(1:base::nrow(grid_df), function
   return(output)
   
 })  
+
+grid_forecast_df <- base::expand.grid(model_list, w_type, stringsAsFactors = FALSE)
+
+names(grid_forecast_df) <- c("model_abb",  "w_type")
+
+grid_forecast_df$w_start <- ifelse(grid_forecast_df$w_type == "sliding",
+                                   base::length(ts.obj) -  window_length + 1,
+                                   1)
+
+grid_forecast_df <- grid_forecast_df %>% dplyr::left_join(models_map)
+grid_forecast_df$model_name <- base::paste(grid_forecast_df$model, 
+                                           "_",
+                                           base::substr(grid_forecast_df$w_type,1,1),
+                                           sep = "")
+
+final_forecast <- future.apply::future_lapply(1:base::nrow(grid_forecast_df), function(i){
+  output <- train <- NULL
+  output <- base::list()
+  
+  # Setting the training partition
+  if(grid_forecast_df$w_type[i] == "expending"){
+    train <- ts.obj
+  } else if(grid_forecast_df$w_type[i] == "sliding"){
+    train <- ts_sub <- stats::window(ts.obj, 
+                                     start = stats::time(ts.obj)[grid_forecast_df$w_start[i]])
+  }
+  
+  
+  if(grid_forecast_df$model_abb[i] == "a"){
+    md <- fc <- NULL
+    a.arg$parallel <- parallel
+    md <- base::do.call(forecast::auto.arima, 
+                        c(base::list(train), 
+                          a.arg))
+    
+    if("xreg" %in% base::names(a.arg)){
+      fc <- forecast::forecast(md, h = h, xreg = xreg.h)
+    } else{
+      fc <- forecast::forecast(md, h = h)
+    }
+    output <- base::list(model = md, forecast = fc)
+    
+  } else if(grid_forecast_df$model_abb[i] == "w"){
+    md <- fc <- NULL
+    md <- base::do.call(stats::HoltWinters, c(base::list(train), w.arg))
+    fc <- forecast::forecast(md, h = h)
+    output <- base::list(model = md, forecast = fc)
+    
+  } else if(grid_forecast_df$model_abb[i] == "e"){
+    md <- fc <- NULL
+    md <- base::do.call(forecast::ets, c(base::list(train), e.arg))
+    fc <- forecast::forecast(md, h = h)
+    output <- base::list(model = md, forecast = fc)
+    
+  } else if(grid_forecast_df$model_abb[i] == "n"){
+    md <- fc <- NULL
+    md <- base::do.call(forecast::nnetar, c(base::list(train), n.arg))
+    if("xreg" %in% base::names(n.arg)){
+      fc <- forecast::forecast(md, h = h, xreg = xreg.h)
+    } else{
+      fc <- forecast::forecast(md, h = h)
+    }
+    output <- base::list(model = md, forecast = fc)
+  } else if(grid_forecast_df$model_abb[i] == "t"){
+    md <- fc <- NULL
+    t.arg$use.parallel <- parallel
+    md <- base::do.call(forecast::tbats, c(list(train), t.arg))
+    fc <- forecast::forecast(md, h = h)
+    output <- base::list(model = md, forecast = fc)
+    
+  }else if(grid_forecast_df$model_abb[i] == "b"){
+    
+    # Check if the bsts arguments are valid
+    if(is.null(b.arg)){
+      b.arg <-  list(linear_trend = TRUE,
+                     seasonal = TRUE,
+                     niter = 1000,
+                     ping = 0,
+                     family = "gaussian",
+                     seed=1234)
+    } else{
+      
+      if("linear_trend" %in% names(b.arg)){
+        if(!b.arg$linear_trend %in% c(TRUE, FALSE)){
+          warning("The value of the 'linear_trend' argument of the bsts model is invalid, using default (TRUE)")
+          b.arg$linear_trend <- TRUE
+        }
+      } else {
+        warning("The 'linear_trend' was not defined, using TRUE as default")
+        b.arg$linear_trend <- TRUE
+      }
+      
+      if("seasonal" %in% names(b.arg)){
+        if(!b.arg$seasonal %in% c(TRUE, FALSE)){
+          warning("The value of the 'seasonal' argument of the bsts model is invalid, using TRUE as default")
+          b.arg$seasonal <- TRUE 
+        } 
+      } else {
+        warning("The 'seasonal' argument was not defined, using TRUE as default")
+        b.arg$seasonal <- TRUE
+      }
+      
+      if("niter" %in% names(b.arg)){
+        if(!base::is.numeric(b.arg$niter)){
+          warning("The value of the 'niter' argument of the bsts model is invalid, setting the argument to 1000")
+          b.arg$niter <- 1000 
+        } else if(b.arg$niter %% 1 != 0){
+          warning("The value of the 'niter' argument of the bsts model is not integer, setting the argument to 1000")
+          b.arg$niter <- 1000 
+        }
+      } else {
+        warning("The 'niter' argument was not defined, setting the argument to 1000")
+        b.arg$niter <- 1000
+      }
+      
+      if("ping" %in% names(b.arg)){
+        if(!base::is.numeric(b.arg$ping)){
+          warning("The value of the 'ping' argument of the bsts model is invalid, setting the argument to 100")
+          b.arg$ping <- 100 
+        } else if(b.arg$ping %% 1 != 0){
+          warning("The value of the 'ping' argument of the bsts model is not integer, setting the argument to 100")
+          b.arg$ping <- 1000 
+        }
+      } else {
+        warning("The 'ping' argument was not defined, setting the argument to 100")
+        b.arg$ping <- 100
+      }
+      
+      if("seed" %in% names(b.arg)){
+        if(!base::is.numeric(b.arg$seed)){
+          warning("The value of the 'seed' argument of the bsts model is invalid, setting the argument to 1234")
+          b.arg$seed <- 1234 
+        } else if(b.arg$seed %% 1 != 0){
+          warning("The value of the 'seed' argument of the bsts model is not integer, setting the argument to 1234")
+          b.arg$seed <- 1234 
+        }
+      } else {
+        warning("The 'seed' argument was not defined, setting the argument to 1234")
+        b.arg$seed <- 1234
+      }
+      
+      
+      if("family" %in% names(b.arg)){
+        if(!b.arg$family %in% c("gaussian", "logit", "poisson", "student")){
+          warning("The value of the 'family' argument of the bsts model is invalid, using 'gaussian' as default")
+          b.arg$family <- "gaussian"
+        }
+      } else{
+        warning("The value of the 'family' argument is missing, using 'gaussian' as default")
+        b.arg$family <- "gaussian"
+      }
+      
+      
+    }
+    
+    md <- fc <- ss <- fit.bsts <- burn <-  NULL
+    ss <- list()
+    if(b.arg$linear_trend){
+      ss <- bsts::AddLocalLinearTrend(ss, train) 
+    }
+    if(b.arg$seasonal){
+      ss <- bsts::AddSeasonal(ss, train, 
+                              nseasons = stats::frequency(train))
+    }
+    
+    md <- bsts::bsts(train, 
+                     state.specification = ss, 
+                     niter = b.arg$niter, 
+                     ping= b.arg$ping, 
+                     seed= b.arg$seed,
+                     family = b.arg$family)
+    fc <- stats::predict(md, horizon = h, quantiles = c(.025, .975))
+    output <- base::list(model = md, forecast = fc)
+  }
+  
+  if(grid_forecast_df$model_abb[i] == "h"){
+    md <- fc <- NULL
+    h.arg$parallel <- parallel
+    md <- base::do.call(forecastHybrid::hybridModel, c(list(train), h.arg))
+    
+    
+    if("xreg" %in% names(h.arg$a.args) ||
+       "xreg" %in% names(h.arg$n.args) ||
+       "xreg" %in% names(h.arg$s.args)){
+      fc <- forecast::forecast(md, h = h, xreg = base::as.data.frame(xreg.h))
+    } else{
+      fc <- forecast::forecast(md, h = h)
+    }
+    
+    output <- base::list(model = md, forecast = fc)
+  }
+  
+  
+  return(output)
+  
+}) %>%
+  stats::setNames(grid_forecast_df$model_name)
+
+
 } else {
 backtesting_train <- base::lapply(1:base::nrow(grid_df), function(i){
   train <- test <- ts_partition <- output <- NULL
@@ -672,6 +872,203 @@ backtesting_train <- base::lapply(1:base::nrow(grid_df), function(i){
   return(output)
   
 })  
+
+grid_forecast_df <- base::expand.grid(model_list, w_type, stringsAsFactors = FALSE)
+
+names(grid_forecast_df) <- c("model_abb",  "w_type")
+
+grid_forecast_df$w_start <- ifelse(grid_forecast_df$w_type == "sliding",
+                                   base::length(ts.obj) -  window_length + 1,
+                                   1)
+
+grid_forecast_df <- grid_forecast_df %>% dplyr::left_join(models_map)
+grid_forecast_df$model_name <- base::paste(grid_forecast_df$model, 
+                                           "_",
+                                           base::substr(grid_forecast_df$w_type,1,1),
+                                           sep = "")
+
+final_forecast <- base::lapply(1:base::nrow(grid_forecast_df), function(i){
+  output <- train <- NULL
+  output <- base::list()
+  
+  # Setting the training partition
+  if(grid_forecast_df$w_type[i] == "expending"){
+    train <- ts.obj
+  } else if(grid_forecast_df$w_type[i] == "sliding"){
+    train <- ts_sub <- stats::window(ts.obj, 
+                                     start = stats::time(ts.obj)[grid_forecast_df$w_start[i]])
+  }
+  
+  
+  if(grid_forecast_df$model_abb[i] == "a"){
+    md <- fc <- NULL
+    a.arg$parallel <- parallel
+    md <- base::do.call(forecast::auto.arima, 
+                        c(base::list(train), 
+                          a.arg))
+    
+    if("xreg" %in% base::names(a.arg)){
+      fc <- forecast::forecast(md, h = h, xreg = xreg.h)
+    } else{
+      fc <- forecast::forecast(md, h = h)
+    }
+    output <- base::list(model = md, forecast = fc)
+    
+  } else if(grid_forecast_df$model_abb[i] == "w"){
+    md <- fc <- NULL
+    md <- base::do.call(stats::HoltWinters, c(base::list(train), w.arg))
+    fc <- forecast::forecast(md, h = h)
+    output <- base::list(model = md, forecast = fc)
+    
+  } else if(grid_forecast_df$model_abb[i] == "e"){
+    md <- fc <- NULL
+    md <- base::do.call(forecast::ets, c(base::list(train), e.arg))
+    fc <- forecast::forecast(md, h = h)
+    output <- base::list(model = md, forecast = fc)
+    
+  } else if(grid_forecast_df$model_abb[i] == "n"){
+    md <- fc <- NULL
+    md <- base::do.call(forecast::nnetar, c(base::list(train), n.arg))
+    if("xreg" %in% base::names(n.arg)){
+      fc <- forecast::forecast(md, h = h, xreg = xreg.h)
+    } else{
+      fc <- forecast::forecast(md, h = h)
+    }
+    output <- base::list(model = md, forecast = fc)
+  } else if(grid_forecast_df$model_abb[i] == "t"){
+    md <- fc <- NULL
+    t.arg$use.parallel <- parallel
+    md <- base::do.call(forecast::tbats, c(list(train), t.arg))
+    fc <- forecast::forecast(md, h = h)
+    output <- base::list(model = md, forecast = fc)
+    
+  }else if(grid_forecast_df$model_abb[i] == "b"){
+    
+    # Check if the bsts arguments are valid
+    if(is.null(b.arg)){
+      b.arg <-  list(linear_trend = TRUE,
+                     seasonal = TRUE,
+                     niter = 1000,
+                     ping = 0,
+                     family = "gaussian",
+                     seed=1234)
+    } else{
+      
+      if("linear_trend" %in% names(b.arg)){
+        if(!b.arg$linear_trend %in% c(TRUE, FALSE)){
+          warning("The value of the 'linear_trend' argument of the bsts model is invalid, using default (TRUE)")
+          b.arg$linear_trend <- TRUE
+        }
+      } else {
+        warning("The 'linear_trend' was not defined, using TRUE as default")
+        b.arg$linear_trend <- TRUE
+      }
+      
+      if("seasonal" %in% names(b.arg)){
+        if(!b.arg$seasonal %in% c(TRUE, FALSE)){
+          warning("The value of the 'seasonal' argument of the bsts model is invalid, using TRUE as default")
+          b.arg$seasonal <- TRUE 
+        } 
+      } else {
+        warning("The 'seasonal' argument was not defined, using TRUE as default")
+        b.arg$seasonal <- TRUE
+      }
+      
+      if("niter" %in% names(b.arg)){
+        if(!base::is.numeric(b.arg$niter)){
+          warning("The value of the 'niter' argument of the bsts model is invalid, setting the argument to 1000")
+          b.arg$niter <- 1000 
+        } else if(b.arg$niter %% 1 != 0){
+          warning("The value of the 'niter' argument of the bsts model is not integer, setting the argument to 1000")
+          b.arg$niter <- 1000 
+        }
+      } else {
+        warning("The 'niter' argument was not defined, setting the argument to 1000")
+        b.arg$niter <- 1000
+      }
+      
+      if("ping" %in% names(b.arg)){
+        if(!base::is.numeric(b.arg$ping)){
+          warning("The value of the 'ping' argument of the bsts model is invalid, setting the argument to 100")
+          b.arg$ping <- 100 
+        } else if(b.arg$ping %% 1 != 0){
+          warning("The value of the 'ping' argument of the bsts model is not integer, setting the argument to 100")
+          b.arg$ping <- 1000 
+        }
+      } else {
+        warning("The 'ping' argument was not defined, setting the argument to 100")
+        b.arg$ping <- 100
+      }
+      
+      if("seed" %in% names(b.arg)){
+        if(!base::is.numeric(b.arg$seed)){
+          warning("The value of the 'seed' argument of the bsts model is invalid, setting the argument to 1234")
+          b.arg$seed <- 1234 
+        } else if(b.arg$seed %% 1 != 0){
+          warning("The value of the 'seed' argument of the bsts model is not integer, setting the argument to 1234")
+          b.arg$seed <- 1234 
+        }
+      } else {
+        warning("The 'seed' argument was not defined, setting the argument to 1234")
+        b.arg$seed <- 1234
+      }
+      
+      
+      if("family" %in% names(b.arg)){
+        if(!b.arg$family %in% c("gaussian", "logit", "poisson", "student")){
+          warning("The value of the 'family' argument of the bsts model is invalid, using 'gaussian' as default")
+          b.arg$family <- "gaussian"
+        }
+      } else{
+        warning("The value of the 'family' argument is missing, using 'gaussian' as default")
+        b.arg$family <- "gaussian"
+      }
+      
+      
+    }
+    
+    md <- fc <- ss <- fit.bsts <- burn <-  NULL
+    ss <- list()
+    if(b.arg$linear_trend){
+      ss <- bsts::AddLocalLinearTrend(ss, train) 
+    }
+    if(b.arg$seasonal){
+      ss <- bsts::AddSeasonal(ss, train, 
+                              nseasons = stats::frequency(train))
+    }
+    
+    md <- bsts::bsts(train, 
+                     state.specification = ss, 
+                     niter = b.arg$niter, 
+                     ping= b.arg$ping, 
+                     seed= b.arg$seed,
+                     family = b.arg$family)
+    fc <- stats::predict(md, horizon = h, quantiles = c(.025, .975))
+    output <- base::list(model = md, forecast = fc)
+  }
+  
+  if(grid_forecast_df$model_abb[i] == "h"){
+    md <- fc <- NULL
+    h.arg$parallel <- parallel
+    md <- base::do.call(forecastHybrid::hybridModel, c(list(train), h.arg))
+    
+    
+    if("xreg" %in% names(h.arg$a.args) ||
+       "xreg" %in% names(h.arg$n.args) ||
+       "xreg" %in% names(h.arg$s.args)){
+      fc <- forecast::forecast(md, h = h, xreg = base::as.data.frame(xreg.h))
+    } else{
+      fc <- forecast::forecast(md, h = h)
+    }
+    
+    output <- base::list(model = md, forecast = fc)
+  }
+  
+  
+  return(output)
+  
+}) %>%
+  stats::setNames(grid_forecast_df$model_name)
 }
 
 
@@ -1010,5 +1407,5 @@ model_output$plot2 <- p2
 return(model_output)
 }
 
-x <- ts_backtesting(ts.obj = USgas, h = 12)
+x <- ts_test(ts.obj = USgas, h = 12)
   

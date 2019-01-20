@@ -256,6 +256,8 @@ if(!base::is.null(top)){
 } else if(top > base::nchar(models) * length(w_type)){
   warning("The value of the 'top' argument exceding the number of models, setting it to NULL (default)")
   top <-  base::nchar(models) * length(w_type)
+} else if(top == "all"){
+  top <-  base::nchar(models) * length(w_type)
 }
 
 #### Testing ####
@@ -322,7 +324,7 @@ for(i in w_type){
   }
 }
 
-start <- Sys.time()
+
 if(parallel){
 future::plan(future::multiprocess, workers = n_cores) 
 backtesting_train <- future.apply::future_lapply(1:base::nrow(grid_df), function(i){
@@ -497,11 +499,7 @@ backtesting_train <- future.apply::future_lapply(1:base::nrow(grid_df), function
   return(output)
   
 })  
-}
-print(Sys.time() - start)
-
-
-start <- Sys.time()
+} else {
 backtesting_train <- base::lapply(1:base::nrow(grid_df), function(i){
   train <- test <- ts_partition <- output <- NULL
   
@@ -674,7 +672,9 @@ backtesting_train <- base::lapply(1:base::nrow(grid_df), function(i){
   return(output)
   
 })  
-print(Sys.time() - start)
+}
+
+
 grid_forecast_df <- base::expand.grid(model_list, w_type, stringsAsFactors = FALSE)
 
 names(grid_forecast_df) <- c("model_abb",  "w_type")
@@ -905,8 +905,12 @@ if(error == "MAPE"){
     dplyr::arrange(avgRMSE)
 }
 
-top_models <- model_output$leaderboard[1:top,] %>% dplyr::select(model, window_type) %>% 
-  dplyr::mutate(flag = 1)
+top_models <- model_output$leaderboard[1:top,] %>% 
+  dplyr::select(model, window_type) %>% 
+  dplyr::mutate(flag = 1,
+                model_name = paste(model, " (",
+                                   base::substr(window_type, 1, 1),
+                                   ")", sep = ""))
 
 for(i in 1:base::length(backtesting_train)){
   
@@ -936,6 +940,10 @@ if(window_type == "both"){
 } else {
   results_df$model_name <- results_df$model
 }
+
+results_df$model_name <- factor(results_df$model_name, 
+                                levels = top_models$model_name,
+                                ordered = TRUE)
 
 p1 <- plotly::plot_ly()
 

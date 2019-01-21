@@ -46,7 +46,8 @@ ts_test <- function(ts.obj,
                            w.arg = NULL,
                            xreg.h = NULL,
                            parallel = TRUE,
-                           n_cores = future::availableCores() - 1){
+                           n_cores = future::availableCores() - 1,
+                           palette = "BrBG"){
 
 `%>%` <- magrittr::`%>%` 
 
@@ -149,6 +150,15 @@ if(!error %in% c("MAPE", "RMSE")){
 if(!base::is.logical(plot)){
   warning("The value of the 'plot' parameter is invalid, using default option TRUE")
   plot <- TRUE
+}
+
+# Checking the palette argument
+brewer_palettes <- row.names(RColorBrewer::brewer.pal.info)
+viridis_palettes <- c("viridis", "magma", "plasma", "inferno", "cividis")
+
+if(!palette %in% c(brewer_palettes, viridis_palettes)){
+  warning("The 'palette' argument is not valid, using default option ('BrBG'")
+  palette <- "BrBG"
 }
 
 
@@ -274,6 +284,18 @@ models_map <- base::data.frame(model_abb = c("a", "b", "e", "h", "n", "t", "w"),
 s <- length(ts.obj) - window_space * (periods - 1)
 e <- length(ts.obj) 
 w_end <- seq(from = s, by = window_space, to = e)
+
+if(window_type == "both" | window_type == "sliding"){
+  if(base::is.null(window_length)){
+    stop("The 'window_length' argument is not set")
+  } else if(!base::is.numeric(window_length)){
+    stop("The 'window_length' argument is not set")
+  } else if(window_length > s){
+    stop("The 'window_legnth' argument is not proportional to the length of the series")
+  }
+}
+
+
 
 periods_map <- base::data.frame(w_end = w_end,
                                 period = 1:periods)
@@ -1141,11 +1163,19 @@ results_df$model_name <- factor(results_df$model_name,
 p1 <- plotly::plot_ly()
 
 # Define the plot colors
-color_ramp <- viridis::viridis(base::length(base::unique(results_df$model_name)), 
-                               alpha = 1, 
-                               direction = 1, 
-                               begin = 0, 
-                               end = 0.9)
+# color_ramp <- viridis::viridis(base::length(base::unique(results_df$model_name)),
+#                                alpha = 1,
+#                                direction = 1,
+#                                begin = 0,
+#                                end = 0.9)
+
+if(palette %in% viridis_palettes){
+color_ramp <- viridis::viridis_pal(option = base::eval(palette))(top)
+} else if(palette %in% brewer_palettes){
+  n_colors <- NULL
+  n_colors <- RColorBrewer::brewer.pal.info$maxcolors[row.names(RColorBrewer::brewer.pal.info)  == palette]
+  color_ramp <- grDevices::colorRampPalette(RColorBrewer::brewer.pal(n_colors, palette))(top)
+}
 
 style <- base::list()
 
@@ -1203,5 +1233,13 @@ model_output$plot2 <- p2
 return(model_output)
 }
 
-x <- ts_test(ts.obj = USgas, 
+brewer_palettes <- row.names(RColorBrewer::brewer.pal.info)
+viridis_palettes <- c("viridis", "magma", "plasma", "inferno", "cividis")
+x <- ts_test(ts.obj = USgas,
+             window_length = 36,
+             palette = "Set1",
+             window_type = "both",
              h = 12)
+x$plot2
+x$leaderboard
+

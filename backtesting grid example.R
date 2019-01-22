@@ -1185,7 +1185,7 @@ for(i in seq_along(m)){
     plotly::layout(yaxis = list(title = "MAPE"),
                    xaxis = list(title = "Period"),
                    annotations = list(
-                     text = "Error Rate by Testing Period",
+                     text = "Error Dist by Model/Testing Period",
                      xref = "paper",
                      yref = "paper",
                      yanchor = "bottom",
@@ -1210,7 +1210,18 @@ for(i in seq_along(m)){
                    yaxis = list(title = "MAPE"),
                    xaxis = list(title = "Model",
                                 tickangle = 45,
-                                tickfont = list(size = 8)))
+                                tickfont = list(size = 8)),
+                   annotations = list(
+                     text = "Error Dist by Model",
+                     xref = "paper",
+                     yref = "paper",
+                     yanchor = "bottom",
+                     xanchor = "center",
+                     align = "center",
+                     x = 0.5,
+                     y = 1,
+                     showarrow = FALSE
+                   ))
 }
 } else if(error == "RMSE"){
   for(i in seq_along(m)){
@@ -1223,7 +1234,18 @@ for(i in seq_along(m)){
                                    line = list(color = color_ramp[i])) %>% 
       plotly::layout(title = "Backtesting Models Error Rate (RMSE)",
                      yaxis = list(title = "RMSE"),
-                     xaxis = list(title = "Period"))
+                     xaxis = list(title = "Period"),
+                     annotations = list(
+                       text = "Error Dist by Model/Testing Period",
+                       xref = "paper",
+                       yref = "paper",
+                       yanchor = "bottom",
+                       xanchor = "center",
+                       align = "center",
+                       x = 0.5,
+                       y = 1,
+                       showarrow = FALSE
+                     ))
     
     p2 <- p2 %>% plotly::add_trace(y = p_df$rmse,
                                    type = "box",
@@ -1239,7 +1261,18 @@ for(i in seq_along(m)){
                      yaxis = list(title = "RMSE"),
                      xaxis = list(title = "Model",
                                   tickangle = 45,
-                                  tickfont = list(size = 10)))
+                                  tickfont = list(size = 10)),
+                     annotations = list(
+                       text = "Error Dist by Model",
+                       xref = "paper",
+                       yref = "paper",
+                       yanchor = "bottom",
+                       xanchor = "center",
+                       align = "center",
+                       x = 0.5,
+                       y = 1,
+                       showarrow = FALSE
+                     ))
   }
 }
 model_output$plot1 <- p1 
@@ -1270,6 +1303,7 @@ model_output$summary_plot <- plotly::subplot(plotly::subplot(p1, p2,
                                                              titleX = TRUE, 
                                                              titleY = TRUE, 
                                                              nrows = 1),
+                                             titleY = TRUE,
                                              p3, nrows = 2, margin = 0.1)
 return(model_output)
 }

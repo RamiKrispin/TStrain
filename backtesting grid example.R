@@ -1238,7 +1238,13 @@ for(i in seq_along(m)){
 }
 model_output$plot1 <- p1 
 model_output$plot2 <- p2 
-model_output$summary_plot <- plotly::subplot(p1, p2, shareY = TRUE, titleX = TRUE)
+
+p3 <- TSstudio::plot_forecast(model_output$forecast[[base::paste(model_output$leaderboard$model[1], 
+                                                                                  base::substr(model_output$leaderboard$window_type[1], 1, 1),
+                                                                                  sep = "_" )]][["forecast"]])
+model_output$plot3 <- p3 
+model_output$summary_plot <- plotly::subplot(plotly::subplot(p1, p2, shareY = TRUE, titleX = TRUE, nrows = 1),
+                                             p3, nrows = 2)
 return(model_output)
 }
 
@@ -1251,7 +1257,10 @@ x <- ts_test(ts.obj = USgas,
              h = 12)
 x$plot1
 x$plot2
+x$summary_plot
+TSstudio::plot_forecast(x$forecast[[base::paste(x$leaderboard$model[1], base::substr(x$leaderboard$window_type[1], 1, 1), sep = "_" )]][["forecast"]])
 
-plotly::subplot(x$plot1, x$plot2, shareY = TRUE) 
+plotly::subplot(subplot(x$plot1, x$plot2), x$plot3, nrows = 2, margin = 0.1)
+
 x$leaderboard
 

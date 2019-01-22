@@ -1160,14 +1160,6 @@ results_df$model_name <- factor(results_df$model_name,
                                 levels = top_models$model_name,
                                 ordered = TRUE)
 
-p1 <- plotly::plot_ly()
-
-# Define the plot colors
-# color_ramp <- viridis::viridis(base::length(base::unique(results_df$model_name)),
-#                                alpha = 1,
-#                                direction = 1,
-#                                begin = 0,
-#                                end = 0.9)
 
 if(palette %in% viridis_palettes){
 color_ramp <- viridis::viridis_pal(option = base::eval(palette))(top)
@@ -1177,7 +1169,7 @@ color_ramp <- viridis::viridis_pal(option = base::eval(palette))(top)
   color_ramp <- grDevices::colorRampPalette(RColorBrewer::brewer.pal(n_colors, palette))(top)
 }
 
-m <- base::unique(results_df$model_name)
+m <- base::levels(results_df$model_name)
 p1 <- plotly::plot_ly()
 p2 <- plotly::plot_ly()
 
@@ -1190,9 +1182,19 @@ for(i in seq_along(m)){
                                  name = p_df$model_name, 
                                  legendgroup = p_df$model_name, 
                                  line = list(color = color_ramp[i])) %>% 
-    plotly::layout(title = "Backtesting Models Error Rate (MAPE)",
-                   yaxis = list(title = "MAPE"),
-                   xaxis = list(title = "Period"))
+    plotly::layout(yaxis = list(title = "MAPE"),
+                   xaxis = list(title = "Period"),
+                   annotations = list(
+                     text = "Error Rate by Testing Period",
+                     xref = "paper",
+                     yref = "paper",
+                     yanchor = "bottom",
+                     xanchor = "center",
+                     align = "center",
+                     x = 0.5,
+                     y = 1,
+                     showarrow = FALSE
+                   ))
   
   p2 <- p2 %>% plotly::add_trace(y = p_df$mape,
                                  type = "box",
@@ -1206,7 +1208,9 @@ for(i in seq_along(m)){
                                  showlegend=F) %>% 
     plotly::layout(title = "Backtesting Models Error Rate (MAPE)",
                    yaxis = list(title = "MAPE"),
-                   xaxis = list(title = "Model"))
+                   xaxis = list(title = "Model",
+                                tickangle = 45,
+                                tickfont = list(size = 8)))
 }
 } else if(error == "RMSE"){
   for(i in seq_along(m)){
@@ -1233,7 +1237,9 @@ for(i in seq_along(m)){
                                    showlegend=F) %>% 
       plotly::layout(title = "Backtesting Models Error Rate (RMSE)",
                      yaxis = list(title = "RMSE"),
-                     xaxis = list(title = "Model"))
+                     xaxis = list(title = "Model",
+                                  tickangle = 45,
+                                  tickfont = list(size = 10)))
   }
 }
 model_output$plot1 <- p1 
@@ -1241,10 +1247,30 @@ model_output$plot2 <- p2
 
 p3 <- TSstudio::plot_forecast(model_output$forecast[[base::paste(model_output$leaderboard$model[1], 
                                                                                   base::substr(model_output$leaderboard$window_type[1], 1, 1),
-                                                                                  sep = "_" )]][["forecast"]])
+                                                                                  sep = "_" )]][["forecast"]]) %>%
+  plotly::layout(annotations = list(
+    text = paste(obj.name, " Best Forecast by ", error, " - ", 
+                 model_output$leaderboard$model[1]," with ", 
+                 base::toupper(base::substr(model_output$leaderboard$window_type[1], 1, 1)), 
+                 base::substr(model_output$leaderboard$window_type[1], 2, 
+                              base::nchar(model_output$leaderboard$window_type[1])),
+                 " Window",  sep = ""),
+    xref = "paper",
+    yref = "paper",
+    yanchor = "bottom",
+    xanchor = "center",
+    align = "center",
+    x = 0.5,
+    y = 1,
+    showarrow = FALSE
+  ))
 model_output$plot3 <- p3 
-model_output$summary_plot <- plotly::subplot(plotly::subplot(p1, p2, shareY = TRUE, titleX = TRUE, nrows = 1),
-                                             p3, nrows = 2)
+model_output$summary_plot <- plotly::subplot(plotly::subplot(p1, p2, 
+                                                             shareY = TRUE, 
+                                                             titleX = TRUE, 
+                                                             titleY = TRUE, 
+                                                             nrows = 1),
+                                             p3, nrows = 2, margin = 0.1)
 return(model_output)
 }
 
@@ -1258,9 +1284,13 @@ x <- ts_test(ts.obj = USgas,
 x$plot1
 x$plot2
 x$summary_plot
-TSstudio::plot_forecast(x$forecast[[base::paste(x$leaderboard$model[1], base::substr(x$leaderboard$window_type[1], 1, 1), sep = "_" )]][["forecast"]])
+
+  results_df
+TSstudio::plot_forecast(x$forecast[[base::paste(x$leaderboard$model[1], 
+                                                base::substr(x$leaderboard$window_type[1], 1, 1), sep = "_" )]][["forecast"]])
 
 plotly::subplot(subplot(x$plot1, x$plot2), x$plot3, nrows = 2, margin = 0.1)
+plotly::subplot(subplot(p1, p2), x$plot3, nrows = 2, margin = 0.1)
 
 x$leaderboard
 

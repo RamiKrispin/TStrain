@@ -1177,59 +1177,68 @@ color_ramp <- viridis::viridis_pal(option = base::eval(palette))(top)
   color_ramp <- grDevices::colorRampPalette(RColorBrewer::brewer.pal(n_colors, palette))(top)
 }
 
-style <- base::list()
-
-for(i in base::seq_along(base::unique(results_df$model_name))){
-  style[[i]] <- base::list(target = base::unique(results_df$model_name)[i], 
-                           value = list(line =list(color = color_ramp[i])))
-}
-
-p1 <- plotly::plot_ly(
-  type = 'scatter',
-  x = results_df$period,
-  y = results_df$mape,
-  text = paste("Model: ", results_df$model_name,
-               "<br>Period: ", results_df$period,
-               "<br>MAPE: ", results_df$mape,
-               "<br>RMSE: ", results_df$rmse),
-  hoverinfo = 'text',
-  mode = 'lines',
-  transforms = list(
-    list(
-      type = 'groupby',
-      groups = results_df$model_name,
-      styles = style
-    )
-  )
-)
-p1
-
-
-
-
-error_df <- results_df %>% 
-            dplyr::select(model_name, period, mape) %>%
-            tidyr::spread(key = model_name, value = mape)
-
-error_df
+m <- base::unique(results_df$model_name)
+p1 <- plotly::plot_ly()
 p2 <- plotly::plot_ly()
-for(r2 in 2:base::ncol(error_df)){
-  p2 <- base::suppressWarnings(p2 %>% plotly::add_trace(y = error_df[, r2], 
-                                                        type = "box", 
-                                                        boxpoints = "all", 
-                                                        jitter = 0.3,
-                                                        pointpos = -1.8, 
-                                                        name =  names(error_df)[r2], 
-                                                        marker = list(color = color_ramp[(r2 -1)]),
-                                                        line = list(color = color_ramp[(r2 -1)]),
-                                                        showlegend=F
-  ))
-}
-p2
 
+if(error == "MAPE"){
+for(i in seq_along(m)){
+  p_df <- NULL
+  p_df <- results_df %>% dplyr::filter(model_name == m[i])
+  p1 <- p1 %>% plotly::add_lines(x = p_df$period, 
+                                 y = p_df$mape, 
+                                 name = p_df$model_name, 
+                                 legendgroup = p_df$model_name, 
+                                 line = list(color = color_ramp[i])) %>% 
+    plotly::layout(title = "Backtesting Models Error Rate (MAPE)",
+                   yaxis = list(title = "MAPE"),
+                   xaxis = list(title = "Period"))
+  
+  p2 <- p2 %>% plotly::add_trace(y = p_df$mape,
+                                 type = "box",
+                                 boxpoints = "all",
+                                 jitter = 0.3,
+                                 pointpos = -1.8, 
+                                 name = p_df$model_name, 
+                                 legendgroup = p_df$model_name,
+                                 line = list(color = color_ramp[i]),
+                                 marker = list(color = color_ramp[i]),
+                                 showlegend=F) %>% 
+    plotly::layout(title = "Backtesting Models Error Rate (MAPE)",
+                   yaxis = list(title = "MAPE"),
+                   xaxis = list(title = "Model"))
+}
+} else if(error == "RMSE"){
+  for(i in seq_along(m)){
+    p_df <- NULL
+    p_df <- results_df %>% dplyr::filter(model_name == m[i])
+    p1 <- p1 %>% plotly::add_lines(x = p_df$period, 
+                                   y = p_df$rmse, 
+                                   name = p_df$model_name, 
+                                   legendgroup = p_df$model_name, 
+                                   line = list(color = color_ramp[i])) %>% 
+      plotly::layout(title = "Backtesting Models Error Rate (RMSE)",
+                     yaxis = list(title = "RMSE"),
+                     xaxis = list(title = "Period"))
+    
+    p2 <- p2 %>% plotly::add_trace(y = p_df$rmse,
+                                   type = "box",
+                                   boxpoints = "all",
+                                   jitter = 0.3,
+                                   pointpos = -1.8, 
+                                   name = p_df$model_name, 
+                                   legendgroup = p_df$model_name,
+                                   line = list(color = color_ramp[i]),
+                                   marker = list(color = color_ramp[i]),
+                                   showlegend=F) %>% 
+      plotly::layout(title = "Backtesting Models Error Rate (RMSE)",
+                     yaxis = list(title = "RMSE"),
+                     xaxis = list(title = "Model"))
+  }
+}
 model_output$plot1 <- p1 
 model_output$plot2 <- p2 
-
+model_output$summary_plot <- plotly::subplot(p1, p2, shareY = TRUE, titleX = TRUE)
 return(model_output)
 }
 
@@ -1240,6 +1249,9 @@ x <- ts_test(ts.obj = USgas,
              palette = "Set1",
              window_type = "both",
              h = 12)
+x$plot1
 x$plot2
+
+plotly::subplot(x$plot1, x$plot2, shareY = TRUE) 
 x$leaderboard
 

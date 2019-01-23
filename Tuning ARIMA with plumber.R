@@ -8,13 +8,13 @@
 #-------------------------------------------------------
 
 #' Forecast with ARIMA model the AirPassenger dataset
-#' @param p:int
-#' @param d:int
-#' @param q:int
-#' @param P:int
-#' @param D:int
-#' @param Q:int
-#' @param h:int
+#' @param p:int The order of the autoregressive model
+#' @param d:int The degree of differencing
+#' @param q:int The order of the moving-average model
+#' @param P:int The order of the seasonal autoregressive model
+#' @param D:int The degree of seasonal differencing
+#' @param Q:int The order of the seasonal moving-average model
+#' @param h:int Set forecast horizon
 #' @get /plot
 #' @png
 function(p = 0, d = 0, q = 0, P = 0, D = 0 ,Q = 0, h = 12){

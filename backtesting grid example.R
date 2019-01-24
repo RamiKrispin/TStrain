@@ -1115,7 +1115,7 @@ model_output$parameters <- list(models = models,
                                 n.arg = n.arg,
                                 t.arg = t.arg,
                                 w.arg = w.arg,
-                                xreg.h = xreg,
+                                xreg.h = xreg.h,
                                 parallel = parallel,
                                 n_cores = n_cores,
                                 palette = palette)
@@ -1283,7 +1283,7 @@ model_output$summary_plot <- plotly::subplot(plotly::subplot(p1, p2,
                                              p3, nrows = 2, margin = 0.1) %>%
   plotly::layout(title = "Error Dist. by Period/Model")
 
-model_output
+class(model_output) <- "ts_backtesting"
 
 return(model_output)
 }

@@ -1099,6 +1099,26 @@ final_forecast <- base::lapply(1:base::nrow(grid_forecast_df), function(i){
 
 
 # Parsing the forecast outputs 
+model_output$parameters <- list(models = models, 
+                                periods = periods, 
+                                window_space = window_space,
+                                window_test = window_test,
+                                window_length = window_length,
+                                window_type = window_type,
+                                error = error, 
+                                h = h,
+                                top = top,
+                                a.arg = a.arg,
+                                b.arg = b.arg,
+                                e.arg = e.arg,
+                                h.arg = h.arg,
+                                n.arg = n.arg,
+                                t.arg = t.arg,
+                                w.arg = w.arg,
+                                xreg.h = xreg,
+                                parallel = parallel,
+                                n_cores = n_cores,
+                                palette = palette)
 model_output$ts.obj <- ts.obj
 model_output$forecast <- final_forecast
 model_output[["results"]] <- base::data.frame(model = purrr::map_chr(.x = backtesting_train, ~.x[["model_name"]]),
@@ -1262,6 +1282,9 @@ model_output$summary_plot <- plotly::subplot(plotly::subplot(p1, p2,
                                              titleY = TRUE,
                                              p3, nrows = 2, margin = 0.1) %>%
   plotly::layout(title = "Error Dist. by Period/Model")
+
+model_output
+
 return(model_output)
 }
 

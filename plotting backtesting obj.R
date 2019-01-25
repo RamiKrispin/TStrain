@@ -1,9 +1,9 @@
-str(backtesting.obj, max.level = 1)
-names(backtesting.obj)
-
 
 
 top <- nrow(backtesting.obj$leaderboard)
+
+
+plot_backtesting <- function(backtesting.obj){}
 
 
 # Setting the color palette
@@ -70,3 +70,10 @@ for(i in seq_along(m)){
                                 tickfont = list(size = 8)))
 }
 
+
+p <- plotly::plot_ly()
+for(i in 3:5){
+  x <- backtesting.obj$forecast[[i]]$forecast$x
+p <- p %>% plotly::add_lines(x = time(x), y = x) 
+  
+}

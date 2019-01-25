@@ -1,9 +1,19 @@
-
+#' Ploting Backtesting Object
+#' @export
+#' @param backtesting.obj A ts_backtesting object (ts_backtesting function output)
+#' @param by A string, defines the error metric to be used in the plot c("MAPE", "RMSE")
+#' @param type A string, defines the type of plot to display, c("period", "box", "forecast", "all").
+#' 
+#' "period" - plot the error rate by testing period of the selected models
+#' "box" - box-plot representive of the error rate of the selected models
+#' "forecast" - plot the lead forecast (by the selected error metric)
+#' "all" - plot the three options above together (default)
+#' @param palette A string, set the color palette to be used in the plot. Can select any of the color palettes available in the RColorBrewer or viridis packages
+#' @param top An integer, optional, select the top models by accuarcy (according to the selected error metric). 
+#' If set to NULL (default) will display all available models
 
 top <- nrow(backtesting.obj$leaderboard)
-
-
-plot_backtesting <- function(backtesting.obj, by = "MAPE", palette = "BrBG"){
+plot_backtesting <- function(backtesting.obj, by = "MAPE", type = "all", palette = "BrBG", top = NULL){
 
 # Setting the color palette
 # Checking the palette argument
@@ -72,8 +82,7 @@ for(i in seq_along(m)){
                                 tickfont = list(size = 8)))
 }
 
-p1
-p2
+
 
 p3 <- TSstudio::plot_forecast(backtesting.obj$forecast[[base::paste(backtesting.obj$leaderboard$model[1], 
                                                                  base::substr(backtesting.obj$leaderboard$window_type[1], 1, 1),

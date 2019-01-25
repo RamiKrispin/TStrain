@@ -1118,8 +1118,10 @@ model_output$parameters <- list(models = models,
                                 xreg.h = xreg.h,
                                 parallel = parallel,
                                 n_cores = n_cores,
-                                palette = palette)
-model_output$ts.obj <- ts.obj
+                                palette = palette,
+                                series = ts.obj,
+                                series.name = obj.name)
+
 model_output$forecast <- final_forecast
 model_output[["results"]] <- base::data.frame(model = purrr::map_chr(.x = backtesting_train, ~.x[["model_name"]]),
                                               window_type = purrr::map_chr(.x = backtesting_train, ~.x[["window_type"]]),

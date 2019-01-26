@@ -12,9 +12,13 @@
 #' @param top An integer, optional, select the top models by accuarcy (according to the selected error metric). 
 #' If set to NULL (default) will display all available models
 
-top <- nrow(backtesting.obj$leaderboard)
+
 plot_backtesting <- function(backtesting.obj, by = "MAPE", type = "all", palette = "BrBG", top = NULL){
 
+  obj.name <- output_plot <- NULL
+  output_plot <- list()
+  obj.name <- backtesting.obj$parameters$series.name
+# Error handling  
 # Setting the color palette
 # Checking the palette argument
 brewer_palettes <- row.names(RColorBrewer::brewer.pal.info)
@@ -26,6 +30,18 @@ if(!palette %in% c(brewer_palettes, viridis_palettes)){
 }
 
 
+if(!base::is.null(top)){
+  if(top %% 1 != 0 || top > base::nrow(backtesting.obj$leaderboard)){
+    warning("The value of the 'top' argument is not valid, will plot all available models")
+    top <- base::nrow(backtesting.obj$leaderboard)
+  }
+} else if(base::is.null(top)){
+  top <- base::nrow(backtesting.obj$leaderboard)
+}
+
+
+
+# Setting the color palette
 if(palette %in% viridis_palettes){
   color_ramp <- viridis::viridis_pal(option = base::eval(palette))(top)
 } else if(palette %in% brewer_palettes){
@@ -48,7 +64,7 @@ results_df$model_type <- base::factor(base::paste(results_df$model,
 
 
 
-m <- base::levels(results_df$model_type)
+m <- base::levels(results_df$model_type)[1:top]
 p1 <- plotly::plot_ly()
 p2 <- plotly::plot_ly()
 
@@ -103,8 +119,8 @@ p3 <- TSstudio::plot_forecast(backtesting.obj$forecast[[base::paste(backtesting.
     y = 1,
     showarrow = FALSE
   ))
-backtesting.obj$plot3 <- p3 
-backtesting.obj$summary_plot <- plotly::subplot(plotly::subplot(p1, p2, 
+# output_plot$plot3 <- p3 
+output_plot$summary_plot <- plotly::subplot(plotly::subplot(p1, p2, 
                                                              shareY = TRUE, 
                                                              titleX = TRUE, 
                                                              titleY = TRUE, 
@@ -114,5 +130,11 @@ backtesting.obj$summary_plot <- plotly::subplot(plotly::subplot(p1, p2,
   plotly::layout(title = "Error Dist. by Period/Model")
 
 
-
+return(output_plot)
 }
+
+
+c("viridis", "magma", "plasma", "inferno", "cividis")
+palette = "viridis"
+plot_backtesting(x, palette = palette)
+plot_backtesting(x, top = 5, palette = palette)

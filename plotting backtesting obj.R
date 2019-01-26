@@ -13,7 +13,7 @@
 #' If set to NULL (default) will display all available models
 
 
-plot_backtesting <- function(backtesting.obj, by = "MAPE", type = "all", palette = "BrBG", top = NULL){
+plot_backtesting <- function(backtesting.obj, by = "MAPE", type = "all", palette = "viridis", top = NULL){
 
   obj.name <- output_plot <- NULL
   output_plot <- list()

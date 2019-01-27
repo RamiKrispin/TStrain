@@ -15,7 +15,7 @@
 
 plot_backtesting <- function(backtesting.obj, by = "MAPE", type = "all", palette = "viridis", top = NULL){
 
-  obj.name <- output_plot <- NULL
+  obj.name <- output_plot <- p1 <- p2 <- p3 <- NULL
   output_plot <- list()
   obj.name <- backtesting.obj$parameters$series.name
 # Error handling  
@@ -65,13 +65,16 @@ results_df$model_type <- base::factor(base::paste(results_df$model,
 
 
 m <- base::levels(results_df$model_type)[1:top]
+
 p1 <- plotly::plot_ly()
 p2 <- plotly::plot_ly()
 
-
+if(type == "period" || type == "all"){
 for(i in seq_along(m)){
   p_df <- NULL
   p_df <- results_df %>% dplyr::filter(model_type == m[i])
+  
+  if(type == "all" || type == "period"){
   p1 <- p1 %>% plotly::add_lines(x = p_df$period, 
                                  y = p_df[, tolower(by)], 
                                  name = p_df$model_type, 
@@ -80,6 +83,13 @@ for(i in seq_along(m)){
     plotly::layout(yaxis = list(title = by),
                    xaxis = list(title = "Period"))
   
+  output_plot$period <- p1
+  if(type == "period"){
+    print(p1)
+  }
+  }
+  
+  if(type == "all" || type == "box"){
   p2 <- p2 %>% plotly::add_trace(y = p_df[, base::tolower(by)],
                                  type = "box",
                                  boxpoints = "all",
@@ -96,10 +106,16 @@ for(i in seq_along(m)){
                    xaxis = list(title = "Model",
                                 tickangle = 45,
                                 tickfont = list(size = 8)))
+  output_plot$box <- p2
+  if(type == "box"){
+    print(p2)
+  }
+  }
+}
 }
 
 
-
+if(type == "all" || type == "forecast"){
 p3 <- TSstudio::plot_forecast(backtesting.obj$forecast[[base::paste(backtesting.obj$leaderboard$model[1], 
                                                                  base::substr(backtesting.obj$leaderboard$window_type[1], 1, 1),
                                                                  sep = "_" )]][["forecast"]]) %>%
@@ -119,7 +135,13 @@ p3 <- TSstudio::plot_forecast(backtesting.obj$forecast[[base::paste(backtesting.
     y = 1,
     showarrow = FALSE
   ))
-# output_plot$plot3 <- p3 
+output_plot$forecast <- p3
+if(type == "forecast"){
+  print(p3)
+}
+}
+
+if(type == "all"){
 output_plot$summary_plot <- plotly::subplot(plotly::subplot(p1, p2, 
                                                              shareY = TRUE, 
                                                              titleX = TRUE, 
@@ -128,13 +150,14 @@ output_plot$summary_plot <- plotly::subplot(plotly::subplot(p1, p2,
                                              titleY = TRUE,
                                              p3, nrows = 2, margin = 0.1) %>%
   plotly::layout(title = "Error Dist. by Period/Model")
+  print(output_plot$summary_plot)
 
-
+}
 return(output_plot)
 }
 
 
 c("viridis", "magma", "plasma", "inferno", "cividis")
 palette = "viridis"
-plot_backtesting(x, palette = palette)
+y <- plot_backtesting(x, palette = palette)
 plot_backtesting(x, top = 5, palette = palette)

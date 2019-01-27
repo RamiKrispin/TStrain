@@ -16,7 +16,7 @@
 plot_backtesting <- function(backtesting.obj, by = "MAPE", type = "all", palette = "viridis", top = NULL){
 
   obj.name <- output_plot <- p1 <- p2 <- p3 <- NULL
-  output_plot <- list()
+
   obj.name <- backtesting.obj$parameters$series.name
 # Error handling  
 # Setting the color palette
@@ -69,7 +69,7 @@ m <- base::levels(results_df$model_type)[1:top]
 p1 <- plotly::plot_ly()
 p2 <- plotly::plot_ly()
 
-if(type == "period" || type == "all"){
+if(type == "all" || type == "box" || type == "period"){
 for(i in seq_along(m)){
   p_df <- NULL
   p_df <- results_df %>% dplyr::filter(model_type == m[i])
@@ -84,10 +84,6 @@ for(i in seq_along(m)){
                    yaxis = list(title = by),
                    xaxis = list(title = "Period"))
   
-  
-  if(type == "period"){
-    print(p1)
-  }
   }
   
   if(type == "all" || type == "box"){
@@ -138,15 +134,15 @@ p3 <- TSstudio::plot_forecast(backtesting.obj$forecast[[base::paste(backtesting.
 
 if(type == "period"){
   print(p1)
-  output_plot$period <- p1
+  output_plot <- p1
 } else if(type == "box"){
   print(p2)
-  output_plot$box <- p2
+  output_plot <- p2
 } else if(type == "forecast"){
   print(p3)
-  output_plot$forecast <- p3
+  output_plot <- p3
 } else if(type == "all"){
-  output_plot$summary_plot <- plotly::subplot(plotly::subplot(p1, p2, 
+  output_plot <- plotly::subplot(plotly::subplot(p1, p2, 
                                                               shareY = TRUE, 
                                                               titleX = TRUE, 
                                                               titleY = TRUE, 
@@ -154,20 +150,19 @@ if(type == "period"){
                                               titleY = TRUE,
                                               p3, nrows = 2, margin = 0.1) %>%
     plotly::layout(title = "Error Dist. by Period/Model")
-  print(output_plot$summary_plot)
+  print(output_plot)
 }
 
-
-
-if(type == "all"){
-
-
-}
 return(output_plot)
 }
 
 
 c("viridis", "magma", "plasma", "inferno", "cividis")
 palette = "viridis"
+y <- plot_backtesting(x, palette = palette, type = "period")
+y <- plot_backtesting(x, palette = palette, type = "box")
+y <- plot_backtesting(x, palette = palette, type = "forecast")
+y <- plot_backtesting(x, palette = palette, type = "all")
 y <- plot_backtesting(x, palette = palette)
+
 plot_backtesting(x, top = 5, palette = palette)

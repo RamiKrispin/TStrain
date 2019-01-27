@@ -80,10 +80,11 @@ for(i in seq_along(m)){
                                  name = p_df$model_type, 
                                  legendgroup = p_df$model_type, 
                                  line = list(color = color_ramp[i])) %>% 
-    plotly::layout(yaxis = list(title = by),
+    plotly::layout(title = base::paste("Backtesting Models Error Rate (", by, ")", sep = ""),
+                   yaxis = list(title = by),
                    xaxis = list(title = "Period"))
   
-  output_plot$period <- p1
+  
   if(type == "period"){
     print(p1)
   }
@@ -106,10 +107,7 @@ for(i in seq_along(m)){
                    xaxis = list(title = "Model",
                                 tickangle = 45,
                                 tickfont = list(size = 8)))
-  output_plot$box <- p2
-  if(type == "box"){
-    print(p2)
-  }
+  
   }
 }
 }
@@ -135,22 +133,34 @@ p3 <- TSstudio::plot_forecast(backtesting.obj$forecast[[base::paste(backtesting.
     y = 1,
     showarrow = FALSE
   ))
-output_plot$forecast <- p3
-if(type == "forecast"){
-  print(p3)
-}
+
 }
 
-if(type == "all"){
-output_plot$summary_plot <- plotly::subplot(plotly::subplot(p1, p2, 
-                                                             shareY = TRUE, 
-                                                             titleX = TRUE, 
-                                                             titleY = TRUE, 
-                                                             nrows = 1),
-                                             titleY = TRUE,
-                                             p3, nrows = 2, margin = 0.1) %>%
-  plotly::layout(title = "Error Dist. by Period/Model")
+if(type == "period"){
+  print(p1)
+  output_plot$period <- p1
+} else if(type == "box"){
+  print(p2)
+  output_plot$box <- p2
+} else if(type == "forecast"){
+  print(p3)
+  output_plot$forecast <- p3
+} else if(type == "all"){
+  output_plot$summary_plot <- plotly::subplot(plotly::subplot(p1, p2, 
+                                                              shareY = TRUE, 
+                                                              titleX = TRUE, 
+                                                              titleY = TRUE, 
+                                                              nrows = 1),
+                                              titleY = TRUE,
+                                              p3, nrows = 2, margin = 0.1) %>%
+    plotly::layout(title = "Error Dist. by Period/Model")
   print(output_plot$summary_plot)
+}
+
+
+
+if(type == "all"){
+
 
 }
 return(output_plot)

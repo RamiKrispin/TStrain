@@ -33,10 +33,7 @@ ts_test <- function(ts.obj,
                            window_length = NULL,
                            window_type = "expending",
                            error = "MAPE", 
-                           #window_size = 3,
-                           h = 3,
-                           plot = TRUE,
-                           top = NULL,
+                           h,
                            a.arg = NULL,
                            b.arg = NULL,
                            e.arg = NULL,
@@ -147,11 +144,6 @@ if(!error %in% c("MAPE", "RMSE")){
   error <- "MAPE"
 } 
 
-if(!base::is.logical(plot)){
-  warning("The value of the 'plot' parameter is invalid, using default option TRUE")
-  plot <- TRUE
-}
-
 # Checking the palette argument
 brewer_palettes <- row.names(RColorBrewer::brewer.pal.info)
 viridis_palettes <- c("viridis", "magma", "plasma", "inferno", "cividis")
@@ -259,22 +251,6 @@ if(window_type == "both"){
   w_type <- window_type
 }
 
-if(base::is.null(top)){
-  top <-  base::nchar(models) * length(w_type)
-} else if(!base::is.null(top)){
-  if(!base::is.numeric(top)){
-    warning("The 'top' argument is not valid, will show all models")
-    top <- base::nchar(models) * length(w_type)
-  } else if(top %% 1 != 0 || top < 1){
-    warning("The 'top' argument is not valid, will show all models")
-    top <- base::nchar(models) * length(w_type)
-  }
-}
-
-
-#### Testing ####
-
-
 models_map <- base::data.frame(model_abb = c("a", "b", "e", "h", "n", "t", "w"),
                                model = c("auto.arima", "bsts", "est", "hybridModel", 
                                          "nnetar", "tbats", "HoltWinters"),
@@ -294,7 +270,6 @@ if(window_type == "both" | window_type == "sliding"){
     stop("The 'window_legnth' argument is not proportional to the length of the series")
   }
 }
-
 
 
 periods_map <- base::data.frame(w_end = w_end,
@@ -1107,7 +1082,6 @@ model_output$parameters <- list(models = models,
                                 window_type = window_type,
                                 error = error, 
                                 h = h,
-                                top = top,
                                 a.arg = a.arg,
                                 b.arg = b.arg,
                                 e.arg = e.arg,
@@ -1171,119 +1145,6 @@ for(i in 1:base::length(backtesting_train)){
               sep = "")))
 }
 
-# plotting the object 
-
-  results_df <- model_output$results %>% dplyr::left_join(top_models) %>% 
-    dplyr::filter(flag == 1)
-
-
-
-results_df$model_name <- factor(results_df$model_name, 
-                                levels = top_models$model_name,
-                                ordered = TRUE)
-
-
-if(palette %in% viridis_palettes){
-color_ramp <- viridis::viridis_pal(option = base::eval(palette))(top)
-} else if(palette %in% brewer_palettes){
-  n_colors <- NULL
-  n_colors <- RColorBrewer::brewer.pal.info$maxcolors[row.names(RColorBrewer::brewer.pal.info)  == palette]
-  color_ramp <- grDevices::colorRampPalette(RColorBrewer::brewer.pal(n_colors, palette))(top)
-}
-
-m <- base::levels(results_df$model_name)
-p1 <- plotly::plot_ly()
-p2 <- plotly::plot_ly()
-
-if(error == "MAPE"){
-for(i in seq_along(m)){
-  p_df <- NULL
-  p_df <- results_df %>% dplyr::filter(model_name == m[i])
-  p1 <- p1 %>% plotly::add_lines(x = p_df$period, 
-                                 y = p_df$mape, 
-                                 name = p_df$model_name, 
-                                 legendgroup = p_df$model_name, 
-                                 line = list(color = color_ramp[i])) %>% 
-    plotly::layout(yaxis = list(title = "MAPE"),
-                   xaxis = list(title = "Period"))
-  
-  p2 <- p2 %>% plotly::add_trace(y = p_df$mape,
-                                 type = "box",
-                                 boxpoints = "all",
-                                 jitter = 0.3,
-                                 pointpos = -1.8, 
-                                 name = p_df$model_name, 
-                                 legendgroup = p_df$model_name,
-                                 line = list(color = color_ramp[i]),
-                                 marker = list(color = color_ramp[i]),
-                                 showlegend=F) %>% 
-    plotly::layout(title = "Backtesting Models Error Rate (MAPE)",
-                   yaxis = list(title = "MAPE"),
-                   xaxis = list(title = "Model",
-                                tickangle = 45,
-                                tickfont = list(size = 8)))
-}
-} else if(error == "RMSE"){
-  for(i in seq_along(m)){
-    p_df <- NULL
-    p_df <- results_df %>% dplyr::filter(model_name == m[i])
-    p1 <- p1 %>% plotly::add_lines(x = p_df$period, 
-                                   y = p_df$rmse, 
-                                   name = p_df$model_name, 
-                                   legendgroup = p_df$model_name, 
-                                   line = list(color = color_ramp[i])) %>% 
-      plotly::layout(title = "Backtesting Models Error Rate (RMSE)",
-                     yaxis = list(title = "RMSE"),
-                     xaxis = list(title = "Period"))
-    
-    p2 <- p2 %>% plotly::add_trace(y = p_df$rmse,
-                                   type = "box",
-                                   boxpoints = "all",
-                                   jitter = 0.3,
-                                   pointpos = -1.8, 
-                                   name = p_df$model_name, 
-                                   legendgroup = p_df$model_name,
-                                   line = list(color = color_ramp[i]),
-                                   marker = list(color = color_ramp[i]),
-                                   showlegend=F) %>% 
-      plotly::layout(title = "Backtesting Models Error Rate (RMSE)",
-                     yaxis = list(title = "RMSE"),
-                     xaxis = list(title = "Model",
-                                  tickangle = 45,
-                                  tickfont = list(size = 10)))
-  }
-}
-model_output$plot1 <- p1 
-model_output$plot2 <- p2 
-
-p3 <- TSstudio::plot_forecast(model_output$forecast[[base::paste(model_output$leaderboard$model[1], 
-                                                                                  base::substr(model_output$leaderboard$window_type[1], 1, 1),
-                                                                                  sep = "_" )]][["forecast"]]) %>%
-  plotly::layout(annotations = list(
-    text = paste(obj.name, " Best Forecast by ", error, " - ", 
-                 model_output$leaderboard$model[1]," with ", 
-                 base::toupper(base::substr(model_output$leaderboard$window_type[1], 1, 1)), 
-                 base::substr(model_output$leaderboard$window_type[1], 2, 
-                              base::nchar(model_output$leaderboard$window_type[1])),
-                 " Window",  sep = ""),
-    xref = "paper",
-    yref = "paper",
-    yanchor = "bottom",
-    xanchor = "center",
-    align = "center",
-    x = 0.5,
-    y = 1,
-    showarrow = FALSE
-  ))
-model_output$plot3 <- p3 
-model_output$summary_plot <- plotly::subplot(plotly::subplot(p1, p2, 
-                                                             shareY = TRUE, 
-                                                             titleX = TRUE, 
-                                                             titleY = TRUE, 
-                                                             nrows = 1),
-                                             titleY = TRUE,
-                                             p3, nrows = 2, margin = 0.1) %>%
-  plotly::layout(title = "Error Dist. by Period/Model")
 
 class(model_output) <- "ts_backtesting"
 
@@ -1295,7 +1156,7 @@ viridis_palettes <- c("viridis", "magma", "plasma", "inferno", "cividis")
 x <- ts_test(ts.obj = USgas,
              window_length = 36,
              palette = "Set1",
-             window_type = "both",
+             window_type = "expending",
              h = 12)
 x$plot1
 x$plot2

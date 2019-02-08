@@ -16,7 +16,7 @@
 plot_backtesting <- function(backtesting.obj, by = "MAPE", type = "all", palette = "viridis", top = NULL){
 
   obj.name <- output_plot <- p1 <- p2 <- p3 <- NULL
-
+  error <- by
   obj.name <- backtesting.obj$parameters$series.name
 # Error handling  
 # Setting the color palette
@@ -156,13 +156,3 @@ if(type == "period"){
 return(output_plot)
 }
 
-
-c("viridis", "magma", "plasma", "inferno", "cividis")
-palette = "viridis"
-y <- plot_backtesting(x, palette = palette, type = "period")
-y <- plot_backtesting(x, palette = palette, type = "box")
-y <- plot_backtesting(x, palette = palette, type = "forecast")
-y <- plot_backtesting(x, palette = palette, type = "all")
-y <- plot_backtesting(x, palette = palette)
-
-plot_backtesting(x, top = 5, palette = palette)

@@ -44,7 +44,8 @@ ts_test <- function(ts.obj,
                            xreg.h = NULL,
                            parallel = TRUE,
                            n_cores = future::availableCores() - 1,
-                           palette = "BrBG"){
+                           palette = "BrBG", 
+                    top = NULL){
 
 `%>%` <- magrittr::`%>%` 
 
@@ -1153,11 +1154,14 @@ return(model_output)
 
 brewer_palettes <- row.names(RColorBrewer::brewer.pal.info)
 viridis_palettes <- c("viridis", "magma", "plasma", "inferno", "cividis")
-x <- ts_test(ts.obj = USgas,
-             window_length = 36,
-             palette = "Set1",
+x 
+fc <- ts_test(ts.obj = USgas,
              window_type = "expending",
-             h = 12)
+             h = 60,
+             window_space = 6,
+             window_test = 12,
+             parallel = TRUE,
+             n_cores = 8)
 x$plot1
 x$plot2
 x$summary_plot

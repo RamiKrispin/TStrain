@@ -1,0 +1,210 @@
+---
+title: "Forecasting the Demand for Electricity in the UK"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width=12, fig.height=8,
+                      warning=FALSE, message=FALSE)
+```
+
+An example of forecasting time series data with multiple seasonal patterns and trend with linear regression. Using the demand for electricity in the UK dataset from the **UKgrid** package
+
+### Loading the packages
+```{r}
+library(TSstudio)
+library(UKgrid)
+library(magrittr)
+library(lubridate)
+library(forecast)
+```
+
+### Loading the data
+
+#### Loading the full series
+
+```{r}
+df1 <- extract_grid(type = "data.frame", # Set the output format
+                   columns = "ND", # Select the Net Demand for elctricity column
+                   aggregate = "daily") # Set the agrregation level
+
+head(df1)
+```
+
+### Converting the object to a time series format
+
+```{r}
+ts.obj <- ts(df1$ND, start = c(2011, 1), frequency = 365)
+```
+
+
+### Descriptive Analysis
+
+#### Plot the series
+
+```{r}
+ts_plot(ts.obj = ts.obj, 
+        title = "The Demand for Electricity in the UK",
+        Ytitle = "MW")
+```
+
+
+
+
+#### Seasonal analysis
+
+Different plots for seasonality analysis
+
+```{r}
+ts_seasonal(ts.obj = ts.obj)
+
+ts_heatmap(ts.obj = df1)
+```
+
+
+```{r}
+ts_decompose(ts.obj = ts.obj)
+```
+
+
+
+
+```{r}
+ts_quantile(df1, period = "weekdays")
+```
+
+
+```{r}
+ts_quantile(df1, period = "monthly", n = 2)
+```
+
+
+There is a clear evidence for multiple seasonality patterns in the series:
+
+* Day of the week
+* Month of the year
+
+### Creating new features
+
+#### Trend component - Generally the tslm function will create this functionality
+
+```{r}
+df1$index <- 1:nrow(df1)
+```
+
+
+#### Seasonal component
+
+```{r}
+
+df1$wday <- wday(df1$TIMESTAMP, label = TRUE) %>% factor(ordered = FALSE)
+df1$month <- month(df1$TIMESTAMP, label = TRUE) %>% factor(ordered = FALSE)
+
+head(df1)
+
+
+```
+
+### Training approach
+
+* The goal is to forecast the demand for electricity in the next 365 days
+* Use the last year as a sample out partition (testing) and train the model with the reset
+* Use tslm (time series linear model) model from the forecast package
+* Use MAPE (Mean Absolute Percentage Error) to score the model performance on both the training and testing partitions
+
+```{r}
+h = 365 # Set the forecast horizon
+```
+
+Create a data frame with the input values of the actual forecast, must have the same features we are using to train the model. In this case all the inputs are deterministic (day of the week, month, etc.), if using non-deterministic (such as temperature, prices, etc.) inputs, you will have to forecast their future values
+
+```{r}
+# Create a data frame with futures dates
+# using the last date of the actual data + one day
+fc_df <- data.frame(date = seq.Date(from = max(df1$TIMESTAMP) + days(1), by = "days", length.out = h))
+
+# Continue the index input
+fc_df$index <- seq((max(df1$index) + 1), by = 1, length.out = h)
+
+# Day of the week variable
+fc_df$wday <- wday(fc_df$date, label = TRUE) %>% factor(ordered = FALSE)
+
+# Month of the week variable
+fc_df$month <- month(fc_df$date, label = TRUE) %>% factor(ordered = FALSE)
+
+# Comparing between the end of the actual data frame and the beginning of the forecast data frame
+tail(df1)
+head(fc_df)
+```
+
+
+
+
+
+Creating a training and testing partitions
+
+* Splitting the `ts` object (`ts.obj`) to training and testing partitions
+* Similarly, splitting the input `data.frame` to training and training partitions (must aligned with the `ts.obj` order)
+
+```{r}
+ts_par <- ts_split(ts.obj = ts.obj, sample.out = h)
+
+train <- ts_par$train
+test <- ts_par$test
+
+train_df <- df1[1:length(train),]
+test_df <- df1[(length(train) + 1):nrow(df1),]
+
+nrow(train_df) == length(train)
+nrow(test_df) == length(test)
+```
+
+
+### Baseline model
+
+Using the built-in functionality of the tslm function using trend and seasonal component
+
+Note that by default, the tslm function define the season by the frequency of the series, which in this case is the day of the year (create categorical variable with 365 levels)
+
+```{r}
+md1 <- tslm(train ~ trend + season)
+fc1 <- forecast(md1, h = h)
+
+
+test_forecast(actual = ts.obj, 
+              forecast.obj = fc1,
+              test = test)
+
+accuracy(fc1, test)
+```
+
+With MAPE Error rate of 6.23% and 6.57% on the training and testing partitions, respectively
+
+### Add the day of the week effect
+
+```{r}
+md2 <- tslm(train ~ trend + season + wday , data = train_df)
+fc2 <- forecast(md2, h = h, newdata = test_df)
+
+
+test_forecast(actual = ts.obj, 
+              forecast.obj = fc2,
+              test = test)
+
+accuracy(fc2, test)
+```
+
+Doing a better job with 3.00% and 4.76% error rate on the training and testing partitions, respectively. We will use this approach to create the final forecast
+
+### Finalizing the forecast
+
+Retrain the model with the data and forecast the following 365 days
+
+```{r}
+final_md <- tslm(ts.obj ~ trend + season + wday, data = df1)
+
+final_fc <- forecast(final_md, h = h, newdata = fc_df)
+
+plot_forecast(final_fc)
+```
+

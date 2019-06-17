@@ -23,14 +23,26 @@ ts_reg <- function(input,
                 y, 
                 x = NULL, 
                 seasonal = NULL, 
-                trend = TRUE, 
-                ar = NULL, 
+                trend = list(power = c(1), exponential = FALSE, log = FALSE), 
+                lags = NULL, 
                 method =  "lm", 
                 method_arg = list(step = FALSE),
                 scale = NULL){
   
-  freq <- NULL
+  freq <- md <- NULL
   freq <- base::names(base::which(purrr::map(tsibble::interval(df), ~.x) == 1))
+  
+  # Error handling
+  
+  # Check the trend argument
+  if(!base::is.list(trend) || !all(base::names(trend) %in% c("power", "exponential", "log"))){
+    stop("The 'trend' argument is not valid")
+  } else if(!base::is.null(trend$power)){
+    if(!base::is.numeric(trend$power)){
+      stop("The value of the 'power' parameter of the 'trend' argument is not valid, can be either a numeric ", 
+      "(e.g., 1 for linear, 2 for square, and 0.5 for square root), or NULL for disable")
+    }
+  }
   
   # Setting the input table
   if(any(class(input) == "tbl_ts")){
@@ -211,13 +223,51 @@ ts_reg <- function(input,
     } 
   }
       
+  # Setting the trend
+  if(!base::is.null(trend$power)){
+    for(i in trend$power){
+      df[base::paste("trend_power_", i, sep = "")] <- c(1:base::nrow(df)) ^ i
+      x <- c(x, base::paste("trend_power_", i, sep = ""))
+    }
+  }
+  
+  if(trend$exponential){
+    df$exp_trend <- base::exp(1:base::nrow(df))
+    x <- c(x, "exp_trend")
+  }
+  
+  if(trend$log){
+    df$log_trend <- base::log(1:base::nrow(df))
+    x <- c(x, "log_trend")
+  }
+  
+  if(!base::is.null(lags)){
+    # check all integers numeric
+  }
   
   f <- stats::as.formula(paste("y ~ ", paste0(x, collapse = " + ")))
-  md <- stats::lm(f, data = df)
   
+  if(method_arg$step){
+    md_init <- NULL
+    md_init <- stats::lm(f, data = df)
+    md <- step(md_init)
+  } else(
+    md <- stats::lm(f, data = df)
+  )
+  return(md)
   
   }
   
   
 
+x <- ts_reg (input = USgas, 
+        y, 
+        x = NULL, 
+        seasonal = c("month","quarter"), 
+        trend = list(power = c(1:2), exponential = T, log = T), 
+        ar = NULL, 
+        method =  "lm", 
+        method_arg = list(step = T),
+        scale = NULL)
+summary(x)
 

@@ -46,6 +46,9 @@ ts_reg <- function(input,
   
   # Setting the frequency component
   if(!base::is.null(seasonal)){
+    
+    # Case series frequency is quarterly
+    
     if(freq == "quarter"){
       if(base::length(seasonal) == 1 & seasonal == "quarter"){
         df$quarter <- lubridate::quarter(df$index) %>% base::factor(ordered = FALSE)
@@ -57,6 +60,9 @@ ts_reg <- function(input,
       } else {
         stop("The seasonal component is not valid")
       }
+      
+      # Case series frequency is monthly
+      
     } else if(freq == "month"){
       if(base::length(seasonal) == 1 && seasonal == "month"){
         df$month <- lubridate::month(df$index, label = TRUE) %>% base::factor(ordered = FALSE)
@@ -77,7 +83,10 @@ ts_reg <- function(input,
         }
         
         warning("For monthly frequency only 'month' or 'quarter' seasonal component could be used with the 'seasonal' argument")
-      }
+      } else {stop("The seasonal component is not valid")}
+      
+      # Case series frequency is weekly
+      
     } else if(freq == "week"){
       if(base::length(seasonal) == 1 && seasonal == "week"){
         df$week <- lubridate::week(df$index) %>% base::factor(ordered = FALSE)
@@ -104,8 +113,11 @@ ts_reg <- function(input,
         }
         
         warning("For weekly frequency only 'week', 'month', or 'quarter' seasonal component could be used with the 'seasonal' argument")
-      }
-    } else if(freq == "day"){
+      } else {stop("The seasonal component is not valid")}
+    
+      # Case series frequency is daily
+      
+      } else if(freq == "day"){
       if(base::length(seasonal) == 1 && seasonal == "wday"){
         df$wday <- lubridate::wday(df$index, label = TRUE) %>% base::factor(ordered = FALSE)
         x <- c(x, "wday")
@@ -147,7 +159,55 @@ ts_reg <- function(input,
         }
         
         warning("For daily frequency only 'wday', 'yday', 'week', 'month', or 'quarter' seasonal component could be used with the 'seasonal' argument")
-      }
+      } else {stop("The seasonal component is not valid")}
+    
+      # Case series frequency is hourly
+      
+      } else if(freq == "hour"){
+      if(base::length(seasonal) == 1 && seasonal == "hour"){
+        df$hour <- lubridate::hour(df$index) %>% base::factor(ordered = FALSE)
+        x <- c(x, "hour")
+      } else if(all(seasonal %in% c("hour", "wday", "yday","week", "month", "quarter"))){
+        df$quarter <- lubridate::quarter(df$index) %>% base::factor(ordered = FALSE)
+        df$month <- lubridate::month(df$index, label = TRUE) %>% base::factor(ordered = FALSE)
+        df$week <- lubridate::week(df$index) %>% base::factor(ordered = FALSE)
+        df$wday <- lubridate::wday(df$index, label = TRUE) %>% base::factor(ordered = FALSE)
+        df$yday <- lubridate::yday(df$index) %>% base::factor(ordered = FALSE)
+        df$hour <- lubridate::hour(df$index) %>% base::factor(ordered = FALSE)
+        x <- c(x, "hour","wday", "yday", "week","month", "quarter")
+      } else if(any(seasonal %in% c("hour","wday", "yday","week", "month", "quarter"))){
+        if("hour" %in% seasonal){
+          df$hour <- lubridate::hour(df$index) %>% base::factor(ordered = FALSE)
+          x <- c(x, "hour")
+        } 
+        
+        if("wday" %in% seasonal){
+          df$wday <- lubridate::wday(df$index, label = TRUE) %>% base::factor(ordered = FALSE)
+          x <- c(x, "wday")
+        } 
+        
+        if("yday" %in% seasonal){
+          df$yday <- lubridate::yday(df$index) %>% base::factor(ordered = FALSE)
+          x <- c(x, "yday")
+        } 
+        
+        if("week" %in% seasonal){
+          df$week <- lubridate::week(df$index) %>% base::factor(ordered = FALSE)
+          x <- c(x, "week")
+        } 
+        
+        if("month" %in% seasonal){
+          df$month <- lubridate::month(df$index, label = TRUE) %>% base::factor(ordered = FALSE)
+          x <- c(x, "month")
+        } 
+        
+        if("quarter" %in% seasonal){
+          df$quarter <- lubridate::quarter(df$index) %>% base::factor(ordered = FALSE)
+          x <- c(x, "quarter")
+        }
+        
+        warning("For daily frequency only 'hour', 'wday', 'yday', 'week', 'month', or 'quarter' seasonal component could be used with the 'seasonal' argument")
+      } else {stop("The seasonal component is not valid")}
     } 
   }
       

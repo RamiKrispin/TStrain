@@ -26,8 +26,10 @@ ts_reg <- function(input,
                 trend = list(power = c(1), exponential = FALSE, log = FALSE), 
                 lags = NULL, 
                 method =  "lm", 
-                method_arg = list(step = FALSE),
+                method_arg = list(step = FALSE, direction = "both"),
                 scale = NULL){
+  
+  `%>%` <- magrittr::`%>%`
   
   freq <- md <- NULL
   freq <- base::names(base::which(purrr::map(tsibble::interval(df), ~.x) == 1))
@@ -248,15 +250,18 @@ ts_reg <- function(input,
     x <- c(x, "log_trend")
   }
   
-  if(!base::is.null(lags)){
-    # check all integers numeric
-  }
+  
   
   # Setting the lags variables
+  
+  if(!base::is.null(lags)){
   for(i in lags){
-    df[base::paste("lag_", i, sep = "")] <- dplyr::lag(df[, y], -i)
+    df[base::paste("lag_", i, sep = "")] <- df[[y]] %>% dplyr::lag( i)
     x <- c(x, base::paste("lag_", i, sep = ""))
   }
+  df <- df[(max(lags)+ 1):base::nrow(df),]  
+  }
+  
   
   
   f <- stats::as.formula(paste("y ~ ", paste0(x, collapse = " + ")))
@@ -264,7 +269,7 @@ ts_reg <- function(input,
   if(method_arg$step){
     md_init <- NULL
     md_init <- stats::lm(f, data = df)
-    md <- step(md_init)
+    md <- step(md_init, direction = method_arg$direction)
   } else(
     md <- stats::lm(f, data = df)
   )
@@ -278,10 +283,10 @@ x <- ts_reg (input = USgas,
         y = NULL, 
         x = NULL, 
         seasonal = c("month","quarter"), 
-        trend = list(power = c(1:2), exponential = F, log = F), 
-        lags = c(12), 
+        trend = list(power = c(1), exponential = F, log = T), 
+        lags = c(1:12), 
         method =  "lm", 
-        method_arg = list(step = T),
+        method_arg = list(step = T, direction = "both"),
         scale = NULL)
 summary(x)
 

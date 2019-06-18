@@ -259,11 +259,13 @@ ts_reg <- function(input,
     df[base::paste("lag_", i, sep = "")] <- df[[y]] %>% dplyr::lag( i)
     x <- c(x, base::paste("lag_", i, sep = ""))
   }
-  df <- df[(max(lags)+ 1):base::nrow(df),]  
+  df1 <- df[(max(lags)+ 1):base::nrow(df),]  
+  } else {
+    df1 <- df
   }
   
   
-  
+  if(method == "lm"){
   f <- stats::as.formula(paste("y ~ ", paste0(x, collapse = " + ")))
   
   if(method_arg$step){
@@ -273,7 +275,20 @@ ts_reg <- function(input,
   } else(
     md <- stats::lm(f, data = df)
   )
-  return(md)
+  
+  }
+  
+  
+  output <- list(model = md, 
+                 parameters = list(y = y,
+                                   x = x,
+                                   seasonal = seasonal,
+                                   trend = trend,
+                                   lags = lags, 
+                                   method = method,
+                                   method_arg = method_arg),
+                 series = df)
+  return(output)
   
   }
   
@@ -288,5 +303,6 @@ x <- ts_reg (input = USgas,
         method =  "lm", 
         method_arg = list(step = T, direction = "both"),
         scale = NULL)
-summary(x)
+
+summary(x$model)
 

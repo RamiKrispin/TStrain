@@ -20,7 +20,7 @@ tsibble::is_regular(input)
 input <- USgas
 
 ts_reg <- function(input, 
-                y, 
+                y = NULL, 
                 x = NULL, 
                 seasonal = NULL, 
                 trend = list(power = c(1), exponential = FALSE, log = FALSE), 
@@ -41,6 +41,13 @@ ts_reg <- function(input,
     if(!base::is.numeric(trend$power)){
       stop("The value of the 'power' parameter of the 'trend' argument is not valid, can be either a numeric ", 
       "(e.g., 1 for linear, 2 for square, and 0.5 for square root), or NULL for disable")
+    }
+  }
+  
+  # Checking the lags argument
+  if(!base::is.null(lags)){
+    if(!base::is.numeric(lags) || any(lags %% 1 != 0 ) || any(lags <= 0)){
+      stop("The value of the 'ar' argument is not valid. Must be a positive integer")
     }
   }
   
@@ -245,6 +252,13 @@ ts_reg <- function(input,
     # check all integers numeric
   }
   
+  # Setting the lags variables
+  for(i in lags){
+    df[base::paste("lag_", i, sep = "")] <- dplyr::lag(df[, y], -i)
+    x <- c(x, base::paste("lag_", i, sep = ""))
+  }
+  
+  
   f <- stats::as.formula(paste("y ~ ", paste0(x, collapse = " + ")))
   
   if(method_arg$step){
@@ -261,11 +275,11 @@ ts_reg <- function(input,
   
 
 x <- ts_reg (input = USgas, 
-        y, 
+        y = NULL, 
         x = NULL, 
         seasonal = c("month","quarter"), 
-        trend = list(power = c(1:2), exponential = T, log = T), 
-        ar = NULL, 
+        trend = list(power = c(1:2), exponential = F, log = F), 
+        lags = c(12), 
         method =  "lm", 
         method_arg = list(step = T),
         scale = NULL)

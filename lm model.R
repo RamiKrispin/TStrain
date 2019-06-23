@@ -389,7 +389,10 @@ ts_reg <- function(input,
                                    method_arg = method_arg,
                                    scale = scale),
                  series = df)
-  return(output)
+  
+  final_output <- base::structure(output, class = "forecastML")
+  
+  return(final_output)
   
 }
   
@@ -406,4 +409,7 @@ x <- ts_reg (input = AirPassengers,
         scale = "log")
 
 summary(x$model)
+
+x$parameters
+
 

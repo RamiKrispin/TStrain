@@ -48,6 +48,13 @@ ts_reg <- function(input,
     }
   }
   
+  # Check if the x variables are in the input obj
+  if(!base::is.null(x)){
+    if(!base::all(x %in% names(input))){
+      stop("Some or all of the variables names in the 'x' argument do not align with the column names of the input object")
+    }
+  }
+  
   # Setting default values for the trend
   if(!"power" %in% base::names(trend)){
     trend$power <- 1
@@ -366,8 +373,11 @@ ts_reg <- function(input,
   
   
   if(method == "lm"){
-    f <- stats::as.formula(paste(y, "~ ", paste0(new_features, collapse = " + ")))
-    
+    if(!base::is.null(x)){
+    f <- stats::as.formula(paste(y, "~ ", paste0(new_features, x, collapse = " + ")))
+    } else{
+      f <- stats::as.formula(paste(y, "~ ", paste0(new_features, collapse = " + ")))
+    }
     if(method_arg$step){
       md_init <- NULL
       md_init <- stats::lm(f, data = df1)
@@ -413,4 +423,6 @@ summary(x1$model)
 
 x1$parameters
 
-predictML
+predictML <- function(){
+  
+}

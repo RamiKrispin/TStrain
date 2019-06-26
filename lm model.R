@@ -86,7 +86,7 @@ ts_reg <- function(input,
   if(base::any(base::class(input) == "tbl_ts")){
     df <- input
   } else if(any(class(input) == "ts")){
-    df <- as_tsibble(input) %>% setNames(c("index", "y"))
+    df <- tsibble::as_tsibble(input) %>% setNames(c("index", "y"))
     y <- "y"
     if(!base::is.null(x)){
       warning("The 'x' argument cannot be used when input is a 'ts' class")
@@ -374,7 +374,7 @@ ts_reg <- function(input,
   
   if(method == "lm"){
     if(!base::is.null(x)){
-    f <- stats::as.formula(paste(y, "~ ", paste0(new_features, x, collapse = " + ")))
+      f <- stats::as.formula(paste(y, "~ ", paste0(x, collapse = " + "), "+", paste0(new_features, collapse = " + ")))
     } else{
       f <- stats::as.formula(paste(y, "~ ", paste0(new_features, collapse = " + ")))
     }
@@ -423,6 +423,51 @@ summary(x1$model)
 
 x1$parameters
 
-predictML <- function(){
+
+library(tsibbledata)
+
+data("ansett")
+head(ansett)
+str(ansett)
+df <- UKgrid::extract_grid(type = "tbl")
+
+data("vic_elec")
+head(vic_elec)
+str(vic_elec)
+
+
+head(df)
+df1 <- tsibble::as_tsibble(df, index = TIMESTAMP)
+df1
+
+TSstudio::ts_plot(vic_elec[, c("Time", "Demand", "Temperature")])
+
+
+x1 <- ts_reg(input = vic_elec,
+             y = "Demand",
+             x = "Temperature",
+             seasonal = c("hour", "wday", "month"),
+             trend = list(power = c(1), exponential = F, log = T),
+             lags = 48,
+             method =  "lm",
+             method_arg = list(step = T, direction = "both"),
+             scale = NULL)
+summary(x1$model)
+
+
+
+
+predictML <- function(model, newdata = NULL, h){
+  
+  # Error handling
+  if(class(model) != "forecastML"){
+    stop("The input model is invalid, must be a 'forecastML' object")
+  }
+ 
+  if(!base::is.null(model$parameters$x) && base::is.null(newdata)){
+    stop("The input model was trained with regressors, the 'newdata' argument must align to the 'x' argument of the trained model")
+  } else if(!base::is.null(model$parameters$x) && !base::all(model$parameters$x %in% base::names(newdata))){
+    
+  }
   
 }

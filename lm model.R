@@ -463,11 +463,24 @@ predictML <- function(model, newdata = NULL, h){
   if(class(model) != "forecastML"){
     stop("The input model is invalid, must be a 'forecastML' object")
   }
+  
+  if(base::is.null(h)){
+    stop("The forecast horizon argument, 'h', is missing")
+  } else if(!base::is.numeric(h)){
+    stop("The forecast horizon argument, 'h', must be integer")
+  } else if(h %% 1 != 0){
+    stop("The forecast horizon argument, 'h', must be integer")
+  }
  
   if(!base::is.null(model$parameters$x) && base::is.null(newdata)){
     stop("The input model was trained with regressors, the 'newdata' argument must align to the 'x' argument of the trained model")
   } else if(!base::is.null(model$parameters$x) && !base::all(model$parameters$x %in% base::names(newdata))){
-    
+    stop("The columns names of the 'newdata' input is not aligned with the variables names that was used on the training process")
+  }
+  
+  if(base::nrow(newdata) != h){
+    warning("The length of the input data ('newdata') is not aligned with the forecast horizon ('h'). Setting the forecast horizon as the number of rows of the input data.")
+    h <- base::nrow(newdata)
   }
   
 }

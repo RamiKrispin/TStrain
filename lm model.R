@@ -26,7 +26,7 @@ ts_reg <- function(input,
                    y = NULL,
                    x = NULL,
                    seasonal = NULL,
-                   trend = list(power = c(1), exponential = FALSE, log = FALSE),
+                   trend = list(linear = TRUE, exponential = FALSE, log = FALSE, power = FALSE),
                    lags = NULL,
                    method =  "lm",
                    method_arg = list(step = FALSE, direction = "both"),
@@ -39,14 +39,39 @@ ts_reg <- function(input,
   # Error handling
   
   # Check the trend argument
-  if(!base::is.list(trend) || !all(base::names(trend) %in% c("power", "exponential", "log"))){
+    
+    if(!base::is.list(trend) || !all(base::names(trend) %in% c("linear", "exponential", "log", "power"))){
     stop("The 'trend' argument is not valid")
-  } else if(!base::is.null(trend$power)){
-    if(!base::is.numeric(trend$power)){
-      stop("The value of the 'power' parameter of the 'trend' argument is not valid, can be either a numeric ",
-           "(e.g., 1 for linear, 2 for square, and 0.5 for square root), or NULL for disable")
+    } else{
+      
+      if(!"linear" %in% base::names(trend)){
+        trend$linear <- FALSE      
+      } else if(!base::is.logical(trend$linear)){
+        stop("The 'linear' argument of the trend must be either TRUE or FALSE")
+      }
+      
+      
+      if(!"exponential" %in% base::names(trend)){
+        trend$exponential <- FALSE      
+      } else if(!base::is.logical(trend$exponential)){
+        stop("The 'exponential' argument of the trend must be either TRUE or FALSE")
+      }
+      
+      if(!"log" %in% base::names(trend)){
+        trend$log <- FALSE      
+      } else if(!base::is.logical(trend$log)){
+        stop("The 'log' argument of the trend must be either TRUE or FALSE")
+      }
+      
+      if(!"power" %in%  base::names(trend)){
+        trend$power <- FALSE
+      } else if(!base::is.numeric(trend$power) && trend$power != FALSE){
+        stop("The value of the 'power' argument is not valid, can be either a numeric ",
+             "(e.g., 2 for square, 0.5 for square root, etc.), or FALSE for disable")
+      }
     }
-  }
+    
+  
   
   # Check if the x variables are in the input obj
   if(!base::is.null(x)){
@@ -55,18 +80,6 @@ ts_reg <- function(input,
     }
   }
   
-  # Setting default values for the trend
-  if(!"power" %in% base::names(trend)){
-    trend$power <- 1
-  }
-  
-  if(!"exponential" %in% base::names(trend)){
-    trend$exponential <- FALSE
-  }
-  
-  if(!"log" %in% base::names(trend)){
-    trend$log <- FALSE
-  }
   
   # Checking the lags argument
   if(!base::is.null(lags)){
@@ -340,7 +353,7 @@ ts_reg <- function(input,
   
   
   # Setting the trend
-  if(!base::is.null(trend$power)){
+  if(trend$power){
     for(i in trend$power){
       df[[base::paste("trend_power_", i, sep = "")]] <- c(1:base::nrow(df)) ^ i
       new_features <- c(new_features, base::paste("trend_power_", i, sep = ""))
@@ -572,6 +585,30 @@ predictML <- function(model, newdata = NULL, h){
                                                              by = base::paste(model$parameters$frequency$value ,"min"),
                                                              length.out = h))
   }
+  
+  
+  
+  # Setting the trend
+  
+  
+  
+  if(!base::is.null(model$parameters$trend$power)){
+    for(i in trend$power){
+      df[[base::paste("trend_power_", i, sep = "")]] <- c(1:base::nrow(df)) ^ i
+      new_features <- c(new_features, base::paste("trend_power_", i, sep = ""))
+    }
+  }
+  
+  if(trend$exponential){
+    df$exp_trend <- base::exp(1:base::nrow(df))
+    new_features <- c(new_features, "exp_trend")
+  }
+  
+  if(trend$log){
+    df$log_trend <- base::log(1:base::nrow(df))
+    new_features <- c(new_features, "log_trend")
+  }
+  
   
   
   

@@ -438,6 +438,7 @@ str(vic_elec)
 
 data(global_economy)
 data(aus_production)
+data(ansett)
 head(df)
 df1 <- tsibble::as_tsibble(df, index = TIMESTAMP)
 df1
@@ -467,6 +468,31 @@ x1 <- ts_reg(input = aus_production,
              scale = NULL)
 summary(x1$model)
 
+x1 <- ts_reg(input = ansett,
+             y = "Passengers",
+             x = NULL,
+             seasonal = c("week"),
+             trend = list(power = c(1), exponential = F, log = T),
+             lags = 1,
+             method =  "lm",
+             method_arg = list(step = T, direction = "both"),
+             scale = NULL)
+
+summary(x1$model)
+
+
+
+x1 <- ts_reg(input = df1,
+             y = "ND",
+             x = NULL,
+             seasonal = c("wday"),
+             trend = list(power = c(1), exponential = F, log = T),
+             lags = c(1:24),
+             method =  "lm",
+             method_arg = list(step = T, direction = "both"),
+             scale = NULL)
+
+summary(x1$model)
 
 x1 <- ts_reg(input = na.omit(global_economy %>% dplyr::filter(Country == "United States")),
              y = "GDP",
@@ -525,6 +551,26 @@ predictML <- function(model, newdata = NULL, h){
     forecast_df <- base::data.frame(index = base::seq(from = start_date, 
                                                       by = model$parameters$frequency$value,
                                                       length.out = h))
+  } else if(model$parameters$frequency$unit == "week"){
+    start_date <- base::max(model$series[[base::attributes(model$series)$index2]]) + model$parameters$frequency$value
+    forecast_df <- base::data.frame(index = base::seq(from = start_date, 
+                                                      by = model$parameters$frequency$value,
+                                                      length.out = h))
+  } else if(model$parameters$frequency$unit == "day"){
+    start_date <- base::max(model$series[[base::attributes(model$series)$index2]]) + lubridate::days(model$parameters$frequency$value)
+    forecast_df <- base::data.frame(index = base::seq(from = start_date, 
+                                                      by = model$parameters$frequency$value,
+                                                      length.out = h))
+  } else if(model$parameters$frequency$unit == "hour"){
+    start_date <- base::max(model$series[[base::attributes(model$series)$index2]]) + lubridate::hours(model$parameters$frequency$value)
+    forecast_df <- base::data.frame(index = base::seq.POSIXt(from = start_date, 
+                                                      by = model$parameters$frequency$unit,
+                                                      length.out = h))
+  } else if(model$parameters$frequency$unit == "minute"){
+    start_date <- base::max(model$series[[base::attributes(model$series)$index2]]) + lubridate::minutes(model$parameters$frequency$value)
+    forecast_df <- base::data.frame(index = base::seq.POSIXt(from = start_date, 
+                                                             by = base::paste(model$parameters$frequency$value ,"min"),
+                                                             length.out = h))
   }
   
   

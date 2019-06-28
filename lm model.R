@@ -353,7 +353,7 @@ ts_reg <- function(input,
   
   
   # Setting the trend
-  if(trend$power){
+  if(base::is.numeric(trend$power)){
     for(i in trend$power){
       df[[base::paste("trend_power_", i, sep = "")]] <- c(1:base::nrow(df)) ^ i
       new_features <- c(new_features, base::paste("trend_power_", i, sep = ""))

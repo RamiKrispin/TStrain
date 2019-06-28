@@ -97,7 +97,7 @@ ts_reg <- function(input,
   time_stamp <- base::attributes(df)$index2
   
   freq <- base::list(unit = base::names(base::which(purrr::map(tsibble::interval(df), ~.x) > 0)),
-                     value = tsibble::interval(df)[which(names(tsibble::interval(df)) == "minute")] %>% base::as.numeric(),
+                     value = tsibble::interval(df)[which(tsibble::interval(df) != 0)] %>% base::as.numeric(),
                      frequency = stats::frequency(df))
   
   
@@ -398,7 +398,8 @@ ts_reg <- function(input,
                                    lags = lags,
                                    method = method,
                                    method_arg = method_arg,
-                                   scale = scale),
+                                   scale = scale,
+                                   frequency = freq),
                  series = df)
   
   final_output <- base::structure(output, class = "forecastML")
@@ -435,7 +436,8 @@ data("vic_elec")
 head(vic_elec)
 str(vic_elec)
 
-
+data(global_economy)
+data(aus_production)
 head(df)
 df1 <- tsibble::as_tsibble(df, index = TIMESTAMP)
 df1
@@ -454,8 +456,29 @@ x1 <- ts_reg(input = vic_elec,
              scale = NULL)
 summary(x1$model)
 
+x1 <- ts_reg(input = aus_production,
+             y = "Beer",
+             x = NULL,
+             seasonal = c("quarter"),
+             trend = list(power = c(1), exponential = F, log = T),
+             lags = 4,
+             method =  "lm",
+             method_arg = list(step = T, direction = "both"),
+             scale = NULL)
+summary(x1$model)
 
 
+x1 <- ts_reg(input = na.omit(global_economy %>% dplyr::filter(Country == "United States")),
+             y = "GDP",
+             x = NULL,
+             # seasonal = c("hour", "wday", "month"),
+             trend = list(power = c(1), exponential = F, log = T),
+             lags = 1,
+             method =  "lm",
+             method_arg = list(step = T, direction = "both"),
+             scale = NULL)
+summary(x1$model)
+model <- x1
 
 predictML <- function(model, newdata = NULL, h){
   
@@ -483,4 +506,35 @@ predictML <- function(model, newdata = NULL, h){
     h <- base::nrow(newdata)
   }
   
+  # Creating new features for the forecast data frame
+  
+  start_date_temp <- base::max(model$series[[base::attributes(model$series)$index2]]) 
+  
+  if(model$parameters$frequency$unit == "year"){
+    start_date <- base::max(model$series[[base::attributes(model$series)$index2]]) + model$parameters$frequency$value
+    forecast_df <- base::data.frame(index = base::seq(from = start_date, 
+                          by = model$parameters$frequency$value,
+                          length.out = h))
+  } else if(model$parameters$frequency$unit == "quarter"){
+    start_date <- base::max(model$series[[base::attributes(model$series)$index2]]) + lubridate::quarter(model$parameters$frequency$value)
+    forecast_df <- base::data.frame(index = base::seq(from = start_date, 
+                          by = model$parameters$frequency$value,
+                          length.out = h))
+  } else if(model$parameters$frequency$unit == "month"){
+    start_date <- base::max(model$series[[base::attributes(model$series)$index2]]) + lubridate::month(model$parameters$frequency$value)
+    forecast_df <- base::data.frame(index = base::seq(from = start_date, 
+                                                      by = model$parameters$frequency$value,
+                                                      length.out = h))
+  }
+  
+  
+  
 }
+
+
+tsibble::interval(df)[which(names(tsibble::interval(df)) == attributes(df)$interval)] %>% base::as.numeric()
+
+
+x <- tsibble::interval(df)
+tsibble::interval(df)[which(tsibble::interval(df) != 0)]
+

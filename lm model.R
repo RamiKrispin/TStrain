@@ -69,6 +69,11 @@ ts_reg <- function(input,
         stop("The value of the 'power' argument is not valid, can be either a numeric ",
              "(e.g., 2 for square, 0.5 for square root, etc.), or FALSE for disable")
       }
+      
+     if(trend$linear && trend$power == 1){
+       warning("Setting both the 'power' argument to 1 and the 'linear' argument to TRUE is equivalent. ",
+       "To avoid redundancy in the variables, setting 'linear' to FALSE")
+     }
     }
     
   
@@ -427,7 +432,7 @@ x1 <- ts_reg (input = AirPassengers,
         y = NULL, 
         x = NULL, 
         seasonal = "month", 
-        # trend = list(power = 1), 
+        trend = list(power = 1,linear = TRUE),
         lags = 12, 
         method =  "lm", 
         method_arg = list(step = TRUE, direction = "both"),

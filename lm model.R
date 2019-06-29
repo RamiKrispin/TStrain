@@ -436,9 +436,9 @@ ts_reg <- function(input,
 x1 <- ts_reg (input = AirPassengers, 
         y = NULL, 
         x = NULL, 
-        # seasonal = "month", 
+        seasonal = "month",
         trend = list(power = FALSE,linear = TRUE),
-        lags = 12, 
+        lags = c(1, 3, 12), 
         method =  "lm", 
         method_arg = list(step = T, direction = "both"),
         scale = "log")
@@ -508,11 +508,11 @@ summary(x1$model)
 x1 <- ts_reg(input = df1,
              y = "ND",
              x = NULL,
-             seasonal = c("wday"),
-             trend = list(power = c(1), exponential = F, log = T),
+             seasonal = c("wday", "month"),
+             trend = list(power = c(0.5), exponential = F, log = T, linear = T),
              lags = c(1:24),
              method =  "lm",
-             method_arg = list(step = T, direction = "both"),
+             method_arg = list(step = F, direction = "both"),
              scale = NULL)
 
 summary(x1$model)
@@ -529,8 +529,13 @@ x1 <- ts_reg(input = na.omit(global_economy %>% dplyr::filter(Country == "United
 summary(x1$model)
 model <- x1
 
+
+
+
+
 predictML <- function(model, newdata = NULL, h){
   
+  forecast_df <- NULL
   # Error handling
   if(class(model) != "forecastML"){
     stop("The input model is invalid, must be a 'forecastML' object")
@@ -655,6 +660,29 @@ predictML <- function(model, newdata = NULL, h){
     forecast_df$linear_trend <- trend_start:trend_end
   }
   
+  if(!base::is.null(model$parameters$lags)){
+    for(i in model$parameters$lags){
+      forecast_df[[base::paste("lag_", i, sep = "")]] <- c(model$series[[model$parameters$y]][(base::nrow(model$series) - i + 1):base::nrow(model$series)] , base::rep(NA,base::nrow(forecast_df) - i))
+    }
+  }
+  
+  
+  if(model$parameters$method == "lm"){
+  forecast_df$yhat <- NA
+ 
+  if(!base::is.null(model$parameters$lags)){
+    for(i in 1:base::nrow(forecast_df)){
+      forecast_df$yhat[i] <- stats::predict(model$model, newdata = forecast_df[i,])
+      for(l in model$parameters$lags){
+        if(i + l <= base::nrow(forecast_df)){
+          forecast_df[[base::paste("lag_", l, sep = "")]][i + l] <- forecast_df$yhat[i] 
+        }
+      }
+    }
+  } else {
+    forecast_df$yhat <- stats::predict(model$model, newdata = forecast_df)
+  }
+  }
   
   
   

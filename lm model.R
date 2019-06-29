@@ -375,6 +375,11 @@ ts_reg <- function(input,
     new_features <- c(new_features, "log_trend")
   }
   
+  if(trend$linear){
+    df$linear_trend <- 1:base::nrow(df)
+    new_features <- c(new_features, "linear_trend")
+  }
+  
   
   
   # Setting the lags variables
@@ -431,15 +436,15 @@ ts_reg <- function(input,
 x1 <- ts_reg (input = AirPassengers, 
         y = NULL, 
         x = NULL, 
-        seasonal = "month", 
-        trend = list(power = 1,linear = TRUE),
+        # seasonal = "month", 
+        trend = list(power = FALSE,linear = TRUE),
         lags = 12, 
         method =  "lm", 
-        method_arg = list(step = TRUE, direction = "both"),
+        method_arg = list(step = T, direction = "both"),
         scale = "log")
 
 summary(x1$model)
-
+model <- x1
 x1$parameters
 
 
@@ -545,15 +550,14 @@ predictML <- function(model, newdata = NULL, h){
     stop("The columns names of the 'newdata' input is not aligned with the variables names that was used on the training process")
   }
   
+  if(!base::is.null(newdata)){
   if(base::nrow(newdata) != h){
     warning("The length of the input data ('newdata') is not aligned with the forecast horizon ('h'). Setting the forecast horizon as the number of rows of the input data.")
     h <- base::nrow(newdata)
   }
+  }
   
   # Creating new features for the forecast data frame
-  
-  start_date_temp <- base::max(model$series[[base::attributes(model$series)$index2]]) 
-  
   if(model$parameters$frequency$unit == "year"){
     start_date <- base::max(model$series[[base::attributes(model$series)$index2]]) + model$parameters$frequency$value
     forecast_df <- base::data.frame(index = base::seq(from = start_date, 
@@ -593,25 +597,62 @@ predictML <- function(model, newdata = NULL, h){
   
   
   
-  # Setting the trend
+  # Setting the seasonal arguments
+  seasonal <- model$parameters$seasonal
   
+  if(!base::is.null(seasonal)){
+    if("minute" %in% seasonal){
+      forecast_df$minute <- (lubridate::hour(forecast_df[["index"]]) * 2 + (lubridate::minute(forecast_df[["index"]]) + freq$value )/ freq$value) %>%
+        base::factor(ordered = FALSE)
+    }
+    
+    if("hour" %in% seasonal){
+      forecast_df$hour <- (lubridate::hour(forecast_df[["index"]]) + 1) %>% base::factor(ordered = FALSE)
+    }
+    
+    if("wday" %in% seasonal){
+      forecast_df$wday <- lubridate::wday(forecast_df[["index"]], label = TRUE) %>% base::factor(ordered = FALSE)
+    }
+    
+    if("yday" %in% seasonal){
+      forecast_df$yday <- lubridate::yday(forecast_df[["index"]]) %>% base::factor(ordered = FALSE)
+    }
+    
+    if("week" %in% seasonal){
+      forecast_df$week <- lubridate::week(forecast_df[["index"]]) %>% base::factor(ordered = FALSE)
+    }
+    
+    if("month" %in% seasonal){
+      forecast_df$month <- lubridate::month(forecast_df[["index"]], label = TRUE) %>% base::factor(ordered = FALSE)
+    }
+    
+    if("quarter" %in% seasonal){
+      forecast_df$quarter <- lubridate::quarter(forecast_df[["index"]]) %>% base::factor(ordered = FALSE)
+    }
+    
+  }
+  # Setting the trend arguments
+  trend <- trend_start <- trend_end <- NULL
+  trend <- model$parameters$trend
+  trend_start <- base::nrow(model$series) + 1
+  trend_end <- trend_start + base::nrow(forecast_df) - 1
   
-  
-  if(!base::is.null(model$parameters$trend$power)){
+  if(base::is.numeric(trend$power)){
     for(i in trend$power){
-      df[[base::paste("trend_power_", i, sep = "")]] <- c(1:base::nrow(df)) ^ i
-      new_features <- c(new_features, base::paste("trend_power_", i, sep = ""))
+      forecast_df[[base::paste("trend_power_", i, sep = "")]] <- c(trend_start:trend_end) ^ i
     }
   }
   
   if(trend$exponential){
-    df$exp_trend <- base::exp(1:base::nrow(df))
-    new_features <- c(new_features, "exp_trend")
+    forecast_df$exp_trend <- base::exp(trend_start:trend_end)
   }
   
   if(trend$log){
-    df$log_trend <- base::log(1:base::nrow(df))
-    new_features <- c(new_features, "log_trend")
+    forecast_df$log_trend <- base::log(trend_start:trend_end)
+  }
+  
+  if(trend$linear){
+    forecast_df$linear_trend <- trend_start:trend_end
   }
   
   

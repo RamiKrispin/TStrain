@@ -684,7 +684,7 @@ predictML <- function(model, newdata = NULL, h){
   }
   }
   
-  
+ return(forecast_df) 
   
 }
 

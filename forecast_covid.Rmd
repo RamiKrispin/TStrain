@@ -1,0 +1,240 @@
+---
+title: "Forecast Covid"
+author: '@Rami_Krispin'
+date: "12/29/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Getting the data
+
+```{r message=FALSE, warning=FALSE}
+
+library(tidyverse)
+
+d2 <- read.csv("https://api.covidtracking.com/v1/us/daily.csv" ) %>%
+  mutate(positiveRate = positiveIncrease / (1 + totalTestResultsIncrease) *100 ) %>%
+  select(date, positiveIncrease, hospitalizedCurrently, deathIncrease,
+         positiveRate, totalTestResultsIncrease, inIcuCurrently ) %>%
+  rename(cases = positiveIncrease ) %>%
+  rename(hospitalized = hospitalizedCurrently ) %>%
+  rename(death = deathIncrease ) %>%
+  rename(nTests = totalTestResultsIncrease ) %>%
+  rename(ICU = inIcuCurrently ) %>%
+  replace_na(list(cases = 0, hospitalized = 0, death = 0, ICU = 0)) %>%
+  mutate(date = as.Date(as.character(date), tryFormats = "%Y%m%d")) %>%
+  arrange(date) %>%     #sort
+  filter(date >= as.Date("2020-03-1") ) %>%  # remove earlier 
+  filter(date <= as.Date("2020-12-25") )   # only keep data up to 12-25 
+
+d2 <- d2 %>%               
+  rename(time = date) %>%
+  arrange(time) 
+
+
+npMax <- 70  # only use last 5 weeks of data for forecast
+np <- nrow(d2) # number of time points
+if(np > npMax)
+  d2 <- d2[(np-npMax+1):np,]
+
+```
+
+### Create features
+
+Create the following features:
+
+-   Linear trend
+
+-   Day of the week seasonal component
+
+```{r}
+
+df <- d2 %>% dplyr::select(date = time, y = death)
+
+# Add linear trend
+df$trend <- 1:nrow(df)
+df$trend_log <- log(1:nrow(df))
+df$wday <- factor(lubridate::wday(df$date, label = TRUE), 
+                   order = FALSE)
+head(df)
+
+```
+
+Likewise, create the future data.frame for the forecast (e.g., `newdata` argument):
+
+```{r}
+# Setting the forecast horizon
+h <- 14
+
+# Create the future dates
+future_df <- data.frame(date = seq.Date(from = max(df$date) + lubridate::days(1),
+                                        length.out = h, 
+                                        by = "day"))
+
+# Add trend and seasonal components
+
+future_df$trend <- (max(df$trend) + 1):(max(df$trend) +  h)
+future_df$trend_log <- log((max(df$trend) + 1):(max(df$trend) +  h))
+future_df$wday <- factor(lubridate::wday(future_df$date, label = TRUE), 
+                          ordered = FALSE)
+
+head(future_df)
+
+```
+
+### Baseline forecast
+
+Will start with fit a linear trend and then add the day of the week seasonal component.
+
+#### Model 1 - linear trend
+
+```{r}
+
+md1 <- lm(y ~ trend, data = df)
+
+summary(md1)
+
+fc1 <- predict(md1, newdata = future_df,
+              interval = "prediction",
+              level = 0.95) %>%
+  as.data.frame()
+
+
+plotly::plot_ly() %>%
+  plotly::add_lines(x = df$date,
+                    y = df$y,
+                    name = "Actual") %>%
+  plotly::add_lines(x = future_df$date,
+                    y = fc1$fit,
+                    line = list(color = "#1f77b4", dash = "dash"),
+                    name = "Forecast") %>%
+  plotly::add_ribbons(x = future_df$date,
+                      ymin = fc1$lwr,
+                      ymax = fc1$upr,
+                      line = list(color = 'rgba(7, 164, 181, 0.05)'),
+                      fillcolor = 'rgba(7, 164, 181, 0.2)',
+                      name = '95% PI')
+
+```
+
+#### Model 2 - log trend
+
+```{r}
+md2 <- lm(y ~ trend_log, data = df)
+
+summary(md2)
+
+fc2 <- predict(md2, newdata = future_df,
+              interval = "prediction",
+              level = 0.95) %>%
+  as.data.frame()
+
+
+plotly::plot_ly() %>%
+  plotly::add_lines(x = df$date,
+                    y = df$y,
+                    name = "Actual") %>%
+  plotly::add_lines(x = future_df$date,
+                    y = fc2$fit,
+                    line = list(color = "#1f77b4", dash = "dash"),
+                    name = "Forecast") %>%
+  plotly::add_ribbons(x = future_df$date,
+                      ymin = fc2$lwr,
+                      ymax = fc2$upr,
+                      line = list(color = 'rgba(7, 164, 181, 0.05)'),
+                      fillcolor = 'rgba(7, 164, 181, 0.2)',
+                      name = '95% PI')
+
+```
+
+In the short run, the log trend seems more reasonable, required to split the data to training / testing and evaluate this assumption.
+
+#### Model 3 - log trend + seasonal component
+
+```{r}
+
+md3 <- lm(y ~ trend_log + wday, data = df)
+
+summary(md3)
+
+fc3 <- predict(md3, newdata = future_df,
+              interval = "prediction",
+              level = 0.95) %>%
+  as.data.frame()
+
+
+plotly::plot_ly() %>%
+  plotly::add_lines(x = df$date,
+                    y = df$y,
+                    name = "Actual") %>%
+  plotly::add_lines(x = future_df$date,
+                    y = fc3$fit,
+                    line = list(color = "#1f77b4", dash = "dash"),
+                    name = "Forecast") %>%
+  plotly::add_ribbons(x = future_df$date,
+                      ymin = fc3$lwr,
+                      ymax = fc3$upr,
+                      line = list(color = 'rgba(7, 164, 181, 0.05)'),
+                      fillcolor = 'rgba(7, 164, 181, 0.2)',
+                      name = '95% PI')
+
+```
+
+#### Model 4 - log trend + seasonal component + Dec seasonal effect
+
+The oscillation of seasonal component is increasing overtime (multiplicative seasonality). The model average the effect of the seasonality on the available data, and the forecast closer to the mid-month (November). One way to help the model capture the most recent oscillation of the day of the week would be by adding secondary flag indicator for day of the week starting on December 1st:
+
+```{r}
+
+
+df$sat <- ifelse(df$wday == "Sat" & df$date >= as.Date("2020-12-01"), 1, 0)
+df$sun <- ifelse(df$wday == "Sun" & df$date >= as.Date("2020-12-01"), 1, 0)
+df$mon <- ifelse(df$wday == "Mon" & df$date >= as.Date("2020-12-01"), 1, 0)
+df$tue <- ifelse(df$wday == "Tue" & df$date >= as.Date("2020-12-01"), 1, 0)
+df$wed <- ifelse(df$wday == "Wed" & df$date >= as.Date("2020-12-01"), 1, 0)
+df$thu <- ifelse(df$wday == "Thu" & df$date >= as.Date("2020-12-01"), 1, 0)
+df$fri <- ifelse(df$wday == "Fri" & df$date >= as.Date("2020-12-01"), 1, 0)
+
+future_df$sat <- ifelse(future_df$wday == "Sat" & future_df$date >= as.Date("2020-12-01"), 1, 0)
+future_df$sun <- ifelse(future_df$wday == "Sun" & future_df$date >= as.Date("2020-12-01"), 1, 0)
+future_df$mon <- ifelse(future_df$wday == "Mon" & future_df$date >= as.Date("2020-12-01"), 1, 0)
+future_df$tue <- ifelse(future_df$wday == "Tue" & future_df$date >= as.Date("2020-12-01"), 1, 0)
+future_df$wed <- ifelse(future_df$wday == "Wed" & future_df$date >= as.Date("2020-12-01"), 1, 0)
+future_df$thu <- ifelse(future_df$wday == "Thu" & future_df$date >= as.Date("2020-12-01"), 1, 0)
+future_df$fri <- ifelse(future_df$wday == "Fri" & future_df$date >= as.Date("2020-12-01"), 1, 0)
+
+
+md4 <- lm(y ~ trend_log + wday + sat + sun + mon + tue + wed + thu + fri, data = df)
+
+summary(md4)
+
+fc4 <- predict(md4, newdata = future_df,
+              interval = "prediction",
+              level = 0.95) %>%
+  as.data.frame()
+
+
+plotly::plot_ly() %>%
+  plotly::add_lines(x = df$date,
+                    y = df$y,
+                    name = "Actual") %>%
+  plotly::add_lines(x = future_df$date,
+                    y = fc4$fit,
+                    line = list(color = "#1f77b4", dash = "dash"),
+                    name = "Forecast") %>%
+  plotly::add_ribbons(x = future_df$date,
+                      ymin = fc4$lwr,
+                      ymax = fc4$upr,
+                      line = list(color = 'rgba(7, 164, 181, 0.05)'),
+                      fillcolor = 'rgba(7, 164, 181, 0.2)',
+                      name = '95% PI')
+```
+
+#### Next steps
+
+-   Use some train/test approach to evaluate the models performance
+
+-   Use multiplicative model to better capture of the change in the seasonal effect

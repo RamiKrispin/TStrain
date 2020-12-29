@@ -6,7 +6,8 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.height=5, fig.width=8)
 ```
 
 ### Getting the data
@@ -154,7 +155,7 @@ In the short run, the log trend seems more reasonable, required to split the dat
 
 #### Model 3 - log trend + seasonal component
 
-```{r}
+```{r }
 
 md3 <- lm(y ~ trend_log + wday, data = df)
 
